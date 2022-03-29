@@ -13,7 +13,7 @@ import Plutus.ChainIndex.Tx (txOutsWithRef)
 import Generators qualified as Gen
 import Hedgehog (Property, forAll, property, (===))
 import Ledger (TxOut (txOutValue))
-import Ledger.Ada qualified as Ada
+import Ledger.Value as Value
 import Test.Tasty
 import Test.Tasty.Hedgehog (testProperty)
 
@@ -43,8 +43,11 @@ assetClassMapAndTxShouldShareTxOuts = property $ do
     let diskState = DiskState.fromTx chainIndexTx
         ciTxOutRefs = Set.fromList
                     $ fmap snd
-                    $ filter (\(out, _) -> txOutValue out /= Ada.toValue (Ada.fromValue (txOutValue out)))
+                    $ filter (\(out, _) -> txOutValue out /= lovelacesToValue (lovelavesFromValue (txOutValue out)))
                     $ txOutsWithRef chainIndexTx
         assetClassMapTxOutRefs =
           mconcat $ diskState ^.. DiskState.assetClassMap . DiskState.unAssetClassMap . folded
     ciTxOutRefs === assetClassMapTxOutRefs
+  where
+    lovelacesToValue = Value.singleton Value.adaSymbol Value.adaToken
+    lovelavesFromValue n = Value.valueOf n Value.adaSymbol Value.adaToken

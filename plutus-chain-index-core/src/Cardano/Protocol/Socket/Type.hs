@@ -16,7 +16,6 @@ import Control.Monad.Class.MonadST (MonadST)
 import Control.Monad.Class.MonadTimer
 import Crypto.Hash (SHA256, hash)
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Aeson.Extras qualified as JSON
 import Data.ByteArray qualified as BA
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
@@ -24,6 +23,7 @@ import Data.Map ((!))
 import Data.Text qualified as Text
 import Data.Time.Units.Extra ()
 import Data.Void (Void)
+import Legacy.Data.Aeson.Extras qualified as JSON
 
 import GHC.Generics
 import NoThunks.Class (NoThunks)
@@ -49,9 +49,12 @@ import Ouroboros.Network.Protocol.LocalTxSubmission.Codec qualified as TxSubmiss
 import Ouroboros.Network.Protocol.LocalTxSubmission.Type qualified as TxSubmission
 import Ouroboros.Network.Util.ShowProxy
 
-import Prettyprinter.Extras
+import Legacy.Prettyprinter.Extras
 
-import Ledger (Block, OnChainTx (..), Tx (..), TxId (..))
+import Ledger (Block, OnChainTx (..), TxId (..))
+import Legacy.Plutus.V2.Ledger.Tx (Tx)
+
+import PlutusTx.Builtins.Internal (BuiltinByteString (BuiltinByteString))
 
 -- | Tip of the block chain type (used by node protocols).
 type Tip = Block
@@ -87,6 +90,8 @@ instance ShowProxy a => ShowProxy [a] where
   showProxy _ = "[" ++ showProxy (Proxy @a) ++ "]"
 
 deriving instance StandardHash Block
+deriving instance Generic BuiltinByteString
+deriving instance NoThunks BuiltinByteString
 deriving newtype instance NoThunks TxId
 
 -- | Limits for the protocols we use.

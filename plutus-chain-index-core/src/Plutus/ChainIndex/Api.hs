@@ -34,6 +34,8 @@ import Servant.API (Description, Get, JSON, NoContent, Post, Put, ReqBody, (:<|>
 import Servant.OpenApi (toOpenApi)
 import Servant.Swagger.UI (SwaggerSchemaUI, SwaggerSchemaUI', swaggerSchemaUIServer)
 
+import Legacy.Plutus.V1.Ledger.Value ()
+
 -- | When requesting UTxOs of a given address, you need to provide the address,
 -- and optionnally the number of elements per page and the last item of the last
 -- requested page.

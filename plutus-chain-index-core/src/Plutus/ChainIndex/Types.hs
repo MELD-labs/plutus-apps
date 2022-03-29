@@ -60,11 +60,11 @@ import GHC.Generics (Generic)
 import Ledger (TxOutRef (..))
 import Ledger.Blockchain (BlockId (..))
 import Ledger.Blockchain qualified as Ledger
-import Ledger.Slot (Slot)
-import Ledger.TxId (TxId)
+import Legacy.Plutus.V1.Ledger.Slot (Slot)
+import Legacy.Prettyprinter.Extras (PrettyShow (..))
+import Plutus.V2.Ledger.Tx (TxId)
 import PlutusTx.Lattice (MeetSemiLattice (..))
 import Prettyprinter (Pretty (..), comma, (<+>))
-import Prettyprinter.Extras (PrettyShow (..))
 
 import Plutus.ChainIndex.Tx (ChainIndexTx)
 

@@ -25,6 +25,7 @@ import Database.SQLite.Simple qualified as Sqlite
 import Generators qualified as Gen
 import Hedgehog (MonadTest, Property, assert, failure, forAll, property, (===))
 import Ledger (outValue)
+import Ledger.Value qualified as Value
 import Plutus.ChainIndex (Page (pageItems), PageQuery (PageQuery), RunRequirements (..), appendBlocks, citxOutputs,
                           runChainIndexEffects, unspentTxOutFromRef, utxoSetWithCurrency)
 import Plutus.ChainIndex.Api (UtxosResponse (UtxosResponse))
@@ -32,7 +33,6 @@ import Plutus.ChainIndex.DbSchema (checkedSqliteDb)
 import Plutus.ChainIndex.Effects (ChainIndexControlEffect, ChainIndexQueryEffect)
 import Plutus.ChainIndex.Tx (_ValidTx)
 import Plutus.ChainIndex.Types (ChainSyncBlock (..))
-import Plutus.V1.Ledger.Ada qualified as Ada
 import Plutus.V1.Ledger.Value (AssetClass (AssetClass), flattenValue)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.Hedgehog (testProperty)
@@ -91,7 +91,7 @@ eachTxOutRefWithCurrencyShouldBeUnspentSpec = property $ do
 
   let assetClasses =
         fmap (\(c, t, _) -> AssetClass (c, t))
-             $ filter (\(c, t, _) -> not $ Ada.adaSymbol == c && Ada.adaToken == t)
+             $ filter (\(c, t, _) -> not $ Value.adaSymbol == c && Value.adaToken == t)
              $ flattenValue
              $ view (traverse . citxOutputs . _ValidTx . traverse . outValue) block
 
@@ -118,7 +118,7 @@ cantRequestForTxOutRefsWithAdaSpec = property $ do
       appendBlocks [(Block tip (map (, def) block))]
 
       let pq = PageQuery 200 Nothing
-      UtxosResponse _ utxoRefs <- utxoSetWithCurrency pq (AssetClass (Ada.adaSymbol, Ada.adaToken))
+      UtxosResponse _ utxoRefs <- utxoSetWithCurrency pq (AssetClass (Value.adaSymbol, Value.adaToken))
       pure $ pageItems utxoRefs
 
   Hedgehog.assert $ null utxoRefs

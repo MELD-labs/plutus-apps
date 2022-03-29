@@ -46,13 +46,13 @@ import Data.Set qualified as Set
 import Hedgehog (MonadGen)
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
-import Ledger.Ada qualified as Ada
 import Ledger.Address (PaymentPubKey (PaymentPubKey), pubKeyAddress)
 import Ledger.Generators qualified as Gen
 import Ledger.Interval qualified as Interval
-import Ledger.Slot (Slot (Slot))
-import Ledger.Tx (Address, TxIn (TxIn), TxOut (TxOut), TxOutRef (TxOutRef))
-import Ledger.TxId (TxId (TxId))
+import Legacy.Plutus.V1.Ledger.Slot (Slot (Slot))
+import Ledger.Tx (TxIn (TxIn), TxOut (TxOut), TxOutRef (TxOutRef), OutputDatum (NoOutputDatum))
+import Plutus.V1.Ledger.Tx (TxId (TxId))
+import Legacy.Plutus.V2.Ledger.Tx (Address)
 import Ledger.Value (Value)
 import Ledger.Value qualified as Value
 import Plutus.ChainIndex.Tx (ChainIndexTx (ChainIndexTx), ChainIndexTxOutputs (ValidTx), txOutRefs)
@@ -101,7 +101,7 @@ genNonZeroAdaValue = do
   value <- Value.singleton <$> (Value.currencySymbol <$> Gen.genSizedByteStringExact 32)
                            <*> (Value.tokenName <$> Gen.genSizedByteString 32)
                            <*> Gen.integral (Range.linear 1 100_000_000_000)
-  ada <- Ada.lovelaceValueOf <$> Gen.integral (Range.linear 1 100_000_000_000)
+  ada <- Value.singleton Value.adaSymbol Value.adaToken <$> Gen.integral (Range.linear 1 100_000_000_000)
   pure $ value <> ada
 
 data TxGenState =
@@ -183,7 +183,7 @@ genTx = do
 
     tx <- pure (ChainIndexTx txId)
         <*> pure (Set.fromList $ fmap (flip TxIn Nothing) allInputs)
-        <*> pure (ValidTx $ (\(addr, vl) -> TxOut addr vl Nothing) <$> newOutputs)
+        <*> pure (ValidTx $ (\(addr, vl) -> TxOut addr vl NoOutputDatum Nothing) <$> newOutputs)
         <*> pure Interval.always
 
         -- TODO: generate datums, scripts, etc.

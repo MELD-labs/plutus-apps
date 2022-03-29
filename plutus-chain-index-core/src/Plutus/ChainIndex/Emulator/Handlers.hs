@@ -32,9 +32,9 @@ import Data.Semigroup.Generic (GenericSemigroupMonoid (..))
 import Data.Set qualified as Set
 import GHC.Generics (Generic)
 import Ledger (Address (addressCredential), ChainIndexTxOut (..), MintingPolicy (MintingPolicy),
-               MintingPolicyHash (MintingPolicyHash), StakeValidator (StakeValidator),
-               StakeValidatorHash (StakeValidatorHash), TxId, TxOut (txOutAddress), TxOutRef (..),
-               Validator (Validator), ValidatorHash (ValidatorHash), txOutDatumHash, txOutValue)
+               MintingPolicyHash (MintingPolicyHash), OutputDatum (..), StakeValidator (StakeValidator),
+               StakeValidatorHash (StakeValidatorHash), TxId, TxOut (..), TxOutRef (..), Validator (Validator),
+               ValidatorHash (ValidatorHash), txOutValue)
 import Ledger.Scripts (ScriptHash (ScriptHash))
 import Plutus.ChainIndex.Api (IsUtxoResponse (IsUtxoResponse), TxosResponse (TxosResponse),
                               UtxosResponse (UtxosResponse))
@@ -95,15 +95,18 @@ getUtxoutFromRef ref@TxOutRef{txOutRefId, txOutRefIdx} = do
         PubKeyCredential _ ->
           pure $ Just $ PublicKeyChainIndexTxOut (txOutAddress txout) (txOutValue txout)
         ScriptCredential vh@(ValidatorHash h) -> do
-          case txOutDatumHash txout of
-            Nothing -> do
+          case txOutDatum txout of
+            NoOutputDatum -> do
               -- If the txout comes from a script address, the Datum should not be Nothing
               logWarn $ NoDatumScriptAddr txout
               pure Nothing
-            Just dh -> do
+            OutputDatumHash dh -> do
               let v = maybe (Left vh) (Right . Validator) $ preview (scriptMap . ix (ScriptHash h)) ds
               let d = maybe (Left dh) Right $ preview (dataMap . ix dh) ds
-              pure $ Just $ ScriptChainIndexTxOut (txOutAddress txout) v d (txOutValue txout)
+              pure $ Just $ ScriptChainIndexTxOut (txOutAddress txout) v d (txOutValue txout) (txOutReferenceScript txout)
+            OutputDatum d -> do
+              let v = maybe (Left vh) (Right . Validator) $ preview (scriptMap . ix (ScriptHash h)) ds
+              pure $ Just $ ScriptChainIndexTxOut (txOutAddress txout) v (Right d) (txOutValue txout) (txOutReferenceScript txout)
 
 handleQuery ::
     forall effs.
