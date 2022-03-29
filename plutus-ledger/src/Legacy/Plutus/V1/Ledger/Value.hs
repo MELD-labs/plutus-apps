@@ -8,9 +8,9 @@
 module Legacy.Plutus.V1.Ledger.Value where
 
 import Codec.Serialise (Serialise)
-import Data.Aeson (ToJSON, FromJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import Legacy.Plutus.V1.Ledger.Orphans ()
-import Plutus.V1.Ledger.Value (CurrencySymbol, TokenName, Value)
+import Plutus.V1.Ledger.Value (AssetClass, CurrencySymbol, TokenName, Value)
 import PlutusTx.AssocMap qualified as AssocMap
 
 deriving anyclass instance (ToJSON a, ToJSON b) => ToJSON (AssocMap.Map a b)
@@ -34,3 +34,7 @@ deriving anyclass instance (Serialise CurrencySymbol)
 deriving anyclass instance ToJSON Value
 deriving anyclass instance FromJSON Value
 deriving anyclass instance Serialise Value
+
+deriving anyclass instance ToJSON AssetClass
+deriving anyclass instance FromJSON AssetClass
+deriving anyclass instance Serialise AssetClass

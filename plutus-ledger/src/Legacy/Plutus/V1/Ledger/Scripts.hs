@@ -18,8 +18,11 @@ import Flat qualified
 import GHC.Generics (Generic)
 import Legacy.Data.Aeson.Extras (decodeSerialise, encodeSerialise)
 import Legacy.Plutus.V1.Ledger.Orphans ()
-import Plutus.V1.Ledger.Scripts (Datum, DatumHash, MintingPolicy, MintingPolicyHash, Redeemer, Script (Script),
-                                 ScriptError, ScriptHash, Validator, ValidatorHash)
+
+import Plutus.V1.Ledger.Scripts (Datum, DatumHash, MintingPolicy, MintingPolicyHash, Redeemer, RedeemerHash,
+                                 Script (Script), ScriptError, ScriptHash, StakeValidator, StakeValidatorHash,
+                                 Validator, ValidatorHash)
+
 import Plutus.V2.Ledger.Api (BuiltinData (BuiltinData), builtinDataToData, dataToBuiltinData)
 import PlutusCore.Data qualified
 
@@ -62,6 +65,8 @@ deriving anyclass instance Hashable ValidatorHash
 
 deriving anyclass instance ToJSON ScriptHash
 deriving anyclass instance FromJSON ScriptHash
+deriving anyclass instance ToJSONKey ScriptHash
+deriving anyclass instance FromJSONKey ScriptHash
 deriving anyclass instance Serialise ScriptHash
 deriving anyclass instance Hashable ScriptHash
 
@@ -78,6 +83,12 @@ deriving anyclass instance ToJSONKey Datum
 deriving anyclass instance FromJSONKey Datum
 deriving anyclass instance Serialise Datum
 
+deriving anyclass instance ToJSON RedeemerHash
+deriving anyclass instance FromJSON RedeemerHash
+deriving anyclass instance ToJSONKey RedeemerHash
+deriving anyclass instance FromJSONKey RedeemerHash
+deriving anyclass instance Serialise RedeemerHash
+
 deriving anyclass instance ToJSON Redeemer
 deriving anyclass instance FromJSON Redeemer
 deriving anyclass instance ToJSONKey Redeemer
@@ -93,6 +104,16 @@ deriving anyclass instance ToJSON MintingPolicyHash
 deriving anyclass instance FromJSON MintingPolicyHash
 deriving anyclass instance ToJSONKey MintingPolicyHash
 deriving anyclass instance FromJSONKey MintingPolicyHash
+
+deriving anyclass instance ToJSON StakeValidatorHash
+deriving anyclass instance FromJSON StakeValidatorHash
+deriving anyclass instance ToJSONKey StakeValidatorHash
+deriving anyclass instance FromJSONKey StakeValidatorHash
+
+deriving anyclass instance ToJSON StakeValidator
+deriving anyclass instance FromJSON StakeValidator
+deriving anyclass instance ToJSONKey StakeValidator
+deriving anyclass instance FromJSONKey StakeValidator
 
 deriving anyclass instance ToJSON ScriptError
 deriving anyclass instance FromJSON ScriptError
