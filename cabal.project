@@ -306,3 +306,6 @@ source-repository-package
   type: git
   location: https://github.com/input-output-hk/ekg-forward
   tag: 297cd9db5074339a2fb2e5ae7d0780debb670c63
+
+package cardano-crypto-praos
+  flags: -external-libsodium-vrf
