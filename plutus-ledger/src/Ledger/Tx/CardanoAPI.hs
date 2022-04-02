@@ -439,13 +439,17 @@ toCardanoMintWitness redeemers idx (P.MintingPolicy script) = do
 fromCardanoTxOut :: C.TxOut C.CtxTx era -> Either FromCardanoError P.TxOut
 fromCardanoTxOut = error "MELD: wait for cardano-api to update C.TxOut"
 
--- TODO: MELD: wait for cardano-api to update C.TxOut
+-- FIXME: MELD: wait for cardano-api to update C.TxOut
 toCardanoTxOut
     :: C.NetworkId
     -> (Maybe P.DatumHash -> Either ToCardanoError (C.TxOutDatum ctx C.AlonzoEra))
     -> P.TxOut
     -> Either ToCardanoError (C.TxOut ctx C.AlonzoEra)
-toCardanoTxOut = error "MELD: wait for cardano-api to update C.TxOut"
+toCardanoTxOut networkId fromHash (P.TxOut addr value (P.OutputDatumHash datumHash) _) =
+    C.TxOut <$> toCardanoAddress networkId addr
+            <*> toCardanoTxOutValue value
+            <*> fromHash (Just datumHash)
+toCardanoTxOut _ _ _ = error "MELD: wait for cardano-api to update C.TxOut"
 
 lookupDatum :: Map P.DatumHash P.Datum -> Maybe P.DatumHash -> Either ToCardanoError (C.TxOutDatum C.CtxTx C.AlonzoEra)
 lookupDatum datums datumHash =
