@@ -107,7 +107,6 @@ makePrisms ''ChainIndexTxOut
 --
 -- Note that converting from 'ChainIndexTxOut' to 'TxOut' and back to
 -- 'ChainIndexTxOut' loses precision ('Datum' and 'Validator' are changed to 'DatumHash' and 'ValidatorHash' respectively)
--- TODO: MELD:
 toTxOut :: ChainIndexTxOut -> TxOut
 toTxOut (PublicKeyChainIndexTxOut addr v)            = TxOut addr v NoOutputDatum Nothing
 toTxOut (ScriptChainIndexTxOut addr _ (Left dh) v s) = TxOut addr v (OutputDatumHash dh) s
@@ -115,7 +114,6 @@ toTxOut (ScriptChainIndexTxOut addr _ (Right d) v s) = TxOut addr v (OutputDatum
 
 -- | Converts a plutus-ledger-api transaction output to the chain index
 -- transaction output.
--- TODO: MELD:
 fromTxOut :: TxOut -> Maybe ChainIndexTxOut
 fromTxOut TxOut { txOutAddress, txOutValue, txOutDatum, txOutReferenceScript } =
   case addressCredential txOutAddress of
