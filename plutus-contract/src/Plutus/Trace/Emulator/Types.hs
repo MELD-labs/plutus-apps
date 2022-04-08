@@ -69,7 +69,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Ledger.Blockchain (Block)
-import Ledger.Slot (Slot (..))
+import Legacy.Plutus.V1.Ledger.Slot (Slot (..))
 import Plutus.ChainIndex (ChainIndexQueryEffect)
 import Plutus.Contract (Contract (..), WalletAPIError)
 import Plutus.Contract.Effects (PABReq, PABResp)

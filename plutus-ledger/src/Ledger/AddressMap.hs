@@ -33,7 +33,7 @@ import Codec.Serialise.Class (Serialise)
 import Control.Lens (At (..), Index, IxValue, Ixed (..), Lens', at, lens, non, (&), (.~), (^.))
 import Control.Monad (join)
 import Data.Aeson (FromJSON (..), ToJSON (..))
-import Data.Aeson.Extras qualified as JSON
+import Legacy.Plutus.V1.Ledger.Scripts (JSONViaSerialise(..))
 import Data.Foldable (fold)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -44,7 +44,8 @@ import GHC.Generics (Generic)
 import Ledger.Blockchain
 import Ledger.Tx (txId)
 import Plutus.V1.Ledger.Address (Address (..))
-import Plutus.V1.Ledger.Tx (Tx (..), TxIn (..), TxOut (..), TxOutRef (..), TxOutTx (..))
+import Plutus.V2.Ledger.Tx (TxIn (..), TxOut (..), TxOutRef (..))
+import Legacy.Plutus.V2.Ledger.Tx (TxOutTx(..), Tx (..))
 import Plutus.V1.Ledger.Value (Value)
 
 type UtxoMap = Map TxOutRef TxOutTx
@@ -53,7 +54,7 @@ type UtxoMap = Map TxOutRef TxOutTx
 newtype AddressMap = AddressMap { getAddressMap :: Map Address UtxoMap }
     deriving stock (Show, Eq, Generic)
     deriving newtype (Serialise)
-    deriving (ToJSON, FromJSON) via (JSON.JSONViaSerialise AddressMap)
+    deriving (ToJSON, FromJSON) via (JSONViaSerialise AddressMap)
 
 -- | An address map with a single unspent transaction output.
 singleton :: (Address, TxOutRef, Tx, TxOut) -> AddressMap

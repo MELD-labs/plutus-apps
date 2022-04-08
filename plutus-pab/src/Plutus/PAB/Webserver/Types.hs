@@ -15,9 +15,10 @@ import Data.Aeson qualified as JSON
 import Data.Map (Map)
 import Data.OpenApi.Schema qualified as OpenApi
 import GHC.Generics (Generic)
-import Ledger (PubKeyHash, Tx, TxId)
+import Ledger (PubKeyHash, TxId)
 import Ledger.Index (UtxoIndex)
-import Ledger.Slot (Slot)
+import Legacy.Plutus.V1.Ledger.Slot (Slot)
+import Legacy.Plutus.V2.Ledger.Tx (Tx)
 import Playground.Types (FunctionSchema)
 import Plutus.Contract.Effects (ActiveEndpoint, PABReq)
 import Plutus.Contract.Wallet (ExportTx)

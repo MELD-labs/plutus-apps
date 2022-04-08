@@ -52,7 +52,7 @@ import Data.Maybe (listToMaybe, mapMaybe)
 import Data.Set qualified as Set
 import Data.Text qualified as T
 import Ledger.Blockchain (OnChainTx (Invalid, Valid))
-import Ledger.Tx (Address, TxIn (txInRef), TxOut (TxOut, txOutAddress), TxOutRef, txId)
+import Ledger.Tx (TxIn (txInRef), TxOut (TxOut, txOutAddress), TxOutRef, txId)
 import Plutus.ChainIndex (ChainIndexQueryEffect, ChainIndexTx (ChainIndexTx, _citxOutputs, _citxTxId),
                           ChainIndexTxOutputs (InvalidTx, ValidTx), RollbackState (Committed),
                           TxOutState (Spent, Unspent), TxValidity (TxInvalid, TxValid), _ValidTx, citxInputs,
@@ -79,6 +79,7 @@ import Plutus.Trace.Emulator.Types (ContractConstraints,
                                     addEventInstanceState, emptyInstanceState, instanceIdThreads, toInstanceState)
 import Plutus.Trace.Scheduler (MessageCall (Message, WaitForMessage), Priority (Frozen, Normal, Sleeping), ThreadId,
                                mkAgentSysCall)
+import Plutus.V1.Ledger.Address (Address)
 import Wallet.API qualified as WAPI
 import Wallet.Effects (NodeClientEffect, WalletEffect)
 import Wallet.Emulator.LogMessages (TxBalanceMsg)

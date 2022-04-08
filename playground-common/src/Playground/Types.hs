@@ -26,12 +26,11 @@ import GHC.Generics (Generic)
 import Language.Haskell.Interpreter (CompilationError, SourceCode)
 import Language.Haskell.Interpreter qualified as HI
 import Ledger (PaymentPubKeyHash, fromSymbol)
-import Ledger.Ada qualified as Ada
 import Ledger.CardanoWallet qualified as CW
 import Ledger.Scripts (ValidatorHash)
-import Ledger.Slot (Slot)
 import Ledger.Value (TokenName)
 import Ledger.Value qualified as V
+import Legacy.Plutus.V1.Ledger.Slot (Slot)
 import Schema (FormArgumentF, FormSchema, ToArgument, ToSchema)
 import Wallet.Emulator.Types (EmulatorEvent, WalletNumber)
 import Wallet.Rollup.Types (AnnotatedTx)
@@ -48,9 +47,9 @@ data KnownCurrency =
 adaCurrency :: KnownCurrency
 adaCurrency =
     KnownCurrency
-        { hash = fromSymbol Ada.adaSymbol
+        { hash = fromSymbol V.adaSymbol
         , friendlyName = "Ada"
-        , knownTokens = Ada.adaToken :| []
+        , knownTokens = V.adaToken :| []
         }
 
 --------------------------------------------------------------------------------

@@ -32,9 +32,9 @@ import Data.Semigroup.Generic (GenericSemigroupMonoid (..))
 import Data.Set qualified as Set
 import GHC.Generics (Generic)
 import Ledger (Address (addressCredential), ChainIndexTxOut (..), MintingPolicy (MintingPolicy),
-               MintingPolicyHash (MintingPolicyHash), StakeValidator (StakeValidator),
-               StakeValidatorHash (StakeValidatorHash), TxId, TxOut (txOutAddress), TxOutRef (..),
-               Validator (Validator), ValidatorHash (ValidatorHash), txOutDatumHash, txOutValue)
+               MintingPolicyHash (MintingPolicyHash), OutputDatum (..), StakeValidator (StakeValidator),
+               StakeValidatorHash (StakeValidatorHash), TxId, TxOut (..), TxOutRef (..), Validator (Validator),
+               ValidatorHash (ValidatorHash), txOutValue)
 import Ledger.Scripts (ScriptHash (ScriptHash))
 import Plutus.ChainIndex.Api (IsUtxoResponse (IsUtxoResponse), TxosResponse (TxosResponse),
                               UtxosResponse (UtxosResponse))
@@ -94,16 +94,14 @@ getUtxoutFromRef ref@TxOutRef{txOutRefId, txOutRefIdx} = do
       case addressCredential $ txOutAddress txout of
         PubKeyCredential _ ->
           pure $ Just $ PublicKeyChainIndexTxOut (txOutAddress txout) (txOutValue txout)
-        ScriptCredential vh@(ValidatorHash h) -> do
-          case txOutDatumHash txout of
-            Nothing -> do
-              -- If the txout comes from a script address, the Datum should not be Nothing
-              logWarn $ NoDatumScriptAddr txout
-              pure Nothing
-            Just dh -> do
-              let v = maybe (Left vh) (Right . Validator) $ preview (scriptMap . ix (ScriptHash h)) ds
-              let d = maybe (Left dh) Right $ preview (dataMap . ix dh) ds
-              pure $ Just $ ScriptChainIndexTxOut (txOutAddress txout) v d (txOutValue txout)
+        ScriptCredential vh@(ValidatorHash h) ->
+          let v = maybe (Left vh) (Right . Validator) $ preview (scriptMap . ix (ScriptHash h)) ds
+              scriptOutput d = Just $ ScriptChainIndexTxOut (txOutAddress txout) v d (txOutValue txout) (txOutReferenceScript txout)
+           in case txOutDatum txout of
+            -- If the txout comes from a script address, the Datum should not be Nothing
+            NoOutputDatum      -> logWarn (NoDatumScriptAddr txout) >> pure Nothing
+            OutputDatumHash dh -> pure $ scriptOutput $ maybe (Left dh) Right $ preview (dataMap . ix dh) ds
+            OutputDatum d      -> pure $ scriptOutput $ Right d
 
 handleQuery ::
     forall effs.

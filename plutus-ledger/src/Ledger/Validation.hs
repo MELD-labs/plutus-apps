@@ -45,12 +45,12 @@ import Cardano.Ledger.Alonzo (TxBody, TxOut)
 import Cardano.Ledger.Alonzo.Genesis (prices)
 import Cardano.Ledger.Alonzo.PParams (PParams' (..))
 import Cardano.Ledger.Alonzo.Rules.Utxos (constructValidated)
-import Cardano.Ledger.Alonzo.Scripts (ExUnits (ExUnits))
+import Cardano.Ledger.Alonzo.Scripts (CostModels (unCostModels), ExUnits (ExUnits))
 import Cardano.Ledger.Alonzo.Tools qualified as C.Ledger
 import Cardano.Ledger.Alonzo.Tx (ValidatedTx (..))
 import Cardano.Ledger.Alonzo.TxBody (TxBody (TxBody, reqSignerHashes))
 import Cardano.Ledger.Alonzo.TxWitness (RdmrPtr, txwitsVKey)
-import Cardano.Ledger.BaseTypes (Globals (..))
+import Cardano.Ledger.BaseTypes (Globals (..), TxIx (TxIx))
 import Cardano.Ledger.Core (PParams, Tx)
 import Cardano.Ledger.Crypto (StandardCrypto)
 import Cardano.Ledger.Shelley.API (Coin (..), LedgerEnv (..), MempoolEnv, MempoolState, NewEpochState, TxId,
@@ -78,11 +78,12 @@ import Ledger.Index qualified as P
 import Ledger.Tx qualified as P
 import Ledger.Tx.CardanoAPI qualified as P
 import Ledger.Value qualified as P
-import Plutus.V1.Ledger.Ada qualified as P
-import Plutus.V1.Ledger.Api qualified as P
 import Plutus.V1.Ledger.Scripts qualified as P
+import Plutus.V2.Ledger.Api qualified as P
 import PlutusTx.Builtins qualified as Builtins
 import PlutusTx.ErrorCodes (checkHasFailedError)
+
+import Legacy.Plutus.V2.Ledger.Tx qualified as P
 
 type CardanoLedgerError = Either P.ValidationErrorInPhase P.ToCardanoError
 
@@ -242,7 +243,7 @@ getTxExUnits utxo (C.Api.ShelleyTx _ tx) =
   where
     ss = systemStart emulatorGlobals
     ei = epochInfo emulatorGlobals
-    costmdls = array (minBound, maxBound) . Map.toList $ getField @"_costmdls" emulatorPParams
+    costmdls = array (minBound, maxBound) . Map.toList $ unCostModels $ getField @"_costmdls" emulatorPParams
     -- Failing transactions throw a checkHasFailedError error, but we don't want to deal with those yet.
     -- We might be able to do that in the future.
     -- But for now just return a huge execution budget so it will run later where we do handle failing transactions.
@@ -271,13 +272,13 @@ evaluateTransactionFee utxo requiredSigners tx = do
   let nkeys = C.Api.estimateTransactionKeyWitnessCount txBodyContent
   txBody <- makeTransactionBody utxo txBodyContent
   case C.Api.evaluateTransactionFee emulatorProtocolParameters txBody nkeys 0 of
-    C.Api.Lovelace fee -> pure $ P.lovelaceValueOf fee
+    C.Api.Lovelace fee -> pure $ P.singleton P.adaSymbol P.adaToken fee
 
 evaluateMinLovelaceOutput :: TxOut EmulatorEra -> P.Value
 evaluateMinLovelaceOutput = toPlutusValue . C.Ledger.evaluateMinLovelaceOutput emulatorPParams
 
 toPlutusValue :: Coin -> P.Value
-toPlutusValue (Coin c) = P.lovelaceValueOf c
+toPlutusValue (Coin c) = P.singleton P.adaSymbol P.adaToken c
 
 fromPlutusTx
   :: UTxO EmulatorEra
@@ -316,7 +317,7 @@ fromPlutusIndex (P.UtxoIndex m) = first Right $
   UTxO . Map.fromList <$> traverse (bitraverse fromPlutusTxOutRef fromPlutusTxOut) (Map.toList m)
 
 fromPlutusTxOutRef :: P.TxOutRef -> Either P.ToCardanoError (TxIn StandardCrypto)
-fromPlutusTxOutRef (P.TxOutRef txId i) = TxIn <$> fromPlutusTxId txId <*> pure (fromInteger i)
+fromPlutusTxOutRef (P.TxOutRef txId i) = TxIn <$> fromPlutusTxId txId <*> pure (TxIx $ fromInteger i)
 
 fromPlutusTxId :: P.TxId -> Either P.ToCardanoError (TxId StandardCrypto)
 fromPlutusTxId = fmap toShelleyTxId . P.toCardanoTxId

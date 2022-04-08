@@ -28,8 +28,8 @@ import Plutus.Contract.Request (MkTxLog)
 import Plutus.Contract.Wallet (export)
 import Plutus.Trace.Emulator (EmulatorConfig (_slotConfig), EmulatorTrace)
 import Plutus.Trace.Emulator qualified as Trace
-import Plutus.V1.Ledger.Api (ExBudget (..))
 import Plutus.V1.Ledger.Scripts (Script (..))
+import Plutus.V2.Ledger.Api (ExBudget (..))
 import Prettyprinter (Pretty (..))
 import Streaming.Prelude qualified as S
 import System.Directory (createDirectoryIfMissing)

@@ -45,12 +45,12 @@ import Data.Function ((&))
 import Data.Map qualified as Map
 import Data.Text (Text, pack)
 import Data.Text.Encoding (encodeUtf8)
-import Ledger.Ada qualified as Ada
 import Ledger.Address (PaymentPubKeyHash)
 import Ledger.CardanoWallet (MockWallet)
 import Ledger.CardanoWallet qualified as CW
 import Ledger.TimeSlot (SlotConfig)
 import Ledger.Tx (CardanoTx)
+import Ledger.Value qualified as V
 import Plutus.ChainIndex (ChainIndexQueryEffect)
 import Plutus.ChainIndex.Client qualified as ChainIndex
 import Plutus.PAB.Arbitrary ()
@@ -88,11 +88,11 @@ distributeNewWalletFunds :: forall effs.
     , Member (Error WalletAPIError) effs
     , Member (LogMsg Text) effs
     )
-    => Maybe Ada.Ada
+    => Maybe Integer
     -> PaymentPubKeyHash
     -> Eff effs CardanoTx
 distributeNewWalletFunds funds = WAPI.payToPaymentPublicKeyHash WAPI.defaultSlotRange
-    (maybe (Ada.adaValueOf 10_000) Ada.toValue funds)
+    (maybe (V.singleton V.adaSymbol V.adaToken 10_000) (V.singleton V.adaSymbol V.adaToken) funds)
 
 newWallet :: forall m effs. (LastMember m effs, MonadIO m) => Eff effs MockWallet
 newWallet = do

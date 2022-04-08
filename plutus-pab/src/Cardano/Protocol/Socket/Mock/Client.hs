@@ -34,7 +34,8 @@ import Ouroboros.Network.Socket
 
 import Cardano.Protocol.Socket.Client (ChainSyncHandle (..))
 import Cardano.Protocol.Socket.Type
-import Ledger (Block, Slot (..), Tx (..))
+import Ledger (Block, Slot (..))
+import Legacy.Plutus.V2.Ledger.Tx (Tx (..))
 
 newtype TxSendHandle = TxSendHandle
     { tshQueue :: TQueue Tx }

@@ -49,8 +49,9 @@ import Cardano.Protocol.Socket.Type
 
 import Cardano.Chain (MockNodeServerChainState (..), addTxToPool, chainNewestFirst, channel, currentSlot, getChannel,
                       getTip, handleControlChain, tip, txPool)
-import Ledger (Block, CardanoTx (..), Slot (..), Tx (..))
+import Ledger (Block, CardanoTx (..), Slot (..))
 import Ledger.TimeSlot (SlotConfig)
+import Legacy.Plutus.V2.Ledger.Tx (Tx (..))
 import Wallet.Emulator.Chain qualified as Chain
 
 data CommandChannel = CommandChannel

@@ -13,16 +13,16 @@ import Hedgehog qualified
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Ledger qualified
-import Ledger.Ada qualified as Ada
 import Ledger.Address (StakePubKeyHash (StakePubKeyHash), addressStakingCredential)
 import Ledger.Constraints as Constraints
 import Ledger.Constraints.OffChain qualified as OC
 import Ledger.Credential (Credential (PubKeyCredential), StakingCredential (StakingHash))
 import Ledger.Crypto (PubKeyHash (PubKeyHash))
 import Ledger.Generators qualified as Gen
-import Ledger.Tx (Tx (txOutputs), TxOut (TxOut, txOutAddress))
+import Ledger.Tx (TxOut (TxOut, txOutAddress))
 import Ledger.Value (CurrencySymbol, Value (Value))
 import Ledger.Value qualified as Value
+import Legacy.Plutus.V2.Ledger.Tx qualified as Tx
 import PlutusTx.AssocMap qualified as AMap
 import Test.Tasty (TestTree, defaultMain, testGroup)
 import Test.Tasty.Hedgehog (testProperty)
@@ -87,12 +87,12 @@ mustPayToPubKeyAddressStakePubKeyNotNothingProp :: Property
 mustPayToPubKeyAddressStakePubKeyNotNothingProp = property $ do
     pkh <- forAll $ Ledger.paymentPubKeyHash <$> Gen.element Gen.knownPaymentPublicKeys
     let skh = StakePubKeyHash $ PubKeyHash "00000000000000000000000000000000000000000000000000000000"
-        txE = mkTx @Void mempty (Constraints.mustPayToPubKeyAddress pkh skh (Ada.toValue Ledger.minAdaTxOut))
+        txE = mkTx @Void mempty (Constraints.mustPayToPubKeyAddress pkh skh (Value.singleton Value.adaSymbol Value.adaToken Ledger.minAdaTxOut))
     case txE of
       Left _ ->
           Hedgehog.assert False
       Right utx -> do
-          let outputs = txOutputs (OC.unBalancedTxTx utx)
+          let outputs = Tx.txOutputs (OC.unBalancedTxTx utx)
           let stakingCreds = mapMaybe stakePaymentPubKeyHash outputs
           Hedgehog.assert $ not $ null stakingCreds
           forM_ stakingCreds ((===) skh)

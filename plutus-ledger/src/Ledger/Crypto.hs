@@ -24,10 +24,11 @@ import Crypto.Hash qualified as Crypto
 import Data.ByteArray qualified as BA
 import Data.ByteString qualified as BS
 import Data.String
-import Plutus.V1.Ledger.Api (LedgerBytes (LedgerBytes), TxId (TxId), fromBuiltin, toBuiltin)
+import Plutus.V2.Ledger.Api (LedgerBytes (LedgerBytes), TxId (TxId), fromBuiltin, toBuiltin)
 import Plutus.V1.Ledger.Bytes qualified as KB
-import Plutus.V1.Ledger.Crypto as Export hiding (PrivateKey)
+import Plutus.V1.Ledger.Crypto as Export
 import PlutusTx.Prelude qualified as P
+import Legacy.Plutus.V1.Ledger.Crypto (PubKey(..), Signature(..))
 
 type PrivateKey = Crypto.XPrv
 

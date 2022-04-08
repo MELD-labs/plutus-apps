@@ -20,7 +20,8 @@ import Data.Aeson qualified as JSON
 import Data.Aeson.Encode.Pretty qualified as JSON
 import Data.ByteString.Lazy.Char8 qualified as BSL8
 import GHC.Generics (Generic)
-import Ledger.Tx (Tx, txId)
+import Ledger.Tx (txId)
+import Legacy.Plutus.V2.Ledger.Tx (Tx)
 import Plutus.Contract.Effects (PABReq (..), PABResp (..))
 import Plutus.Contract.Resumable (IterationID, Request (..), Response (..))
 import Plutus.Contract.Trace.RequestHandler (RequestHandlerLogMsg)

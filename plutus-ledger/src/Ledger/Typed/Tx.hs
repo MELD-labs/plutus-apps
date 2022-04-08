@@ -29,17 +29,15 @@ module Ledger.Typed.Tx where
 import Control.Lens (preview)
 import Ledger.Address (PaymentPubKey, StakePubKey)
 import Ledger.Scripts (Datum (Datum), DatumHash, Redeemer (Redeemer), datumHash)
-import Ledger.Tx (Address, ChainIndexTxOut, TxIn (TxIn, txInRef, txInType),
+import Plutus.V1.Ledger.Address (Address)
+import Ledger.Tx (ChainIndexTxOut, TxIn (TxIn, txInRef, txInType),
                   TxInType (ConsumePublicKeyAddress, ConsumeScriptAddress),
-                  TxOut (TxOut, txOutAddress, txOutDatumHash, txOutValue), TxOutRef, _ScriptChainIndexTxOut,
-                  pubKeyTxOut)
+                  TxOut (TxOut, txOutAddress, txOutDatum, txOutValue, txOutReferenceScript), TxOutRef, _ScriptChainIndexTxOut,
+                  pubKeyTxOut, OutputDatum (OutputDatumHash))
 import Ledger.Typed.Scripts (DatumType, RedeemerType, TypedValidator, validatorAddress, validatorScript)
 import Plutus.V1.Ledger.Value qualified as Value
 
-import PlutusTx (BuiltinData, FromData, ToData, builtinDataToData, dataToBuiltinData, fromBuiltinData, toBuiltinData)
-
-import Codec.Serialise (deserialise, serialise)
-import Data.ByteString.Lazy qualified as BSL
+import PlutusTx (BuiltinData, FromData, ToData, builtinDataToData, fromBuiltinData, toBuiltinData)
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), Value (Object), object, (.:), (.=))
 import Data.Aeson.Types (typeMismatch)
@@ -119,7 +117,7 @@ makeTypedScriptTxOut
     -> TypedScriptTxOut out
 makeTypedScriptTxOut ct d value =
     let outTy = datumHash $ Datum $ toBuiltinData d
-    in TypedScriptTxOut @out TxOut{txOutAddress = validatorAddress ct, txOutValue=value, txOutDatumHash = Just outTy} d
+    in TypedScriptTxOut @out TxOut{txOutAddress = validatorAddress ct, txOutValue=value, txOutDatum=OutputDatumHash outTy, txOutReferenceScript=Nothing} d -- TODO: MELD: fix the last param
 
 -- | A 'TxOutRef' tagged by a phantom type: and the connection type of the output.
 data TypedScriptTxOutRef a = TypedScriptTxOutRef { tyTxOutRefRef :: TxOutRef, tyTxOutRefOut :: TypedScriptTxOut a }
@@ -166,12 +164,6 @@ data ConnectionError =
     | UnknownRef
     deriving stock (Show, Eq, Ord, Generic)
     deriving anyclass (ToJSON, FromJSON)
-
--- TODO: these should probably live somewhere else
-instance ToJSON BuiltinData where
-    toJSON d = toJSON (BSL.toStrict (serialise (builtinDataToData d)))
-instance FromJSON BuiltinData where
-    parseJSON v = dataToBuiltinData . deserialise . BSL.fromStrict <$> parseJSON v
 
 instance Pretty ConnectionError where
     pretty = \case
@@ -264,8 +256,8 @@ typeScriptTxOut
     -> m (TypedScriptTxOut out)
 typeScriptTxOut si ref txout = do
     (addr, datum, outVal) <- case preview _ScriptChainIndexTxOut txout of
-        Just (addr,_ ,datum, outVal) -> pure (addr, datum, outVal)
-        _                            -> throwError $ WrongOutType ExpectedScriptGotPubkey
+        Just (addr,_ ,datum, outVal, _) -> pure (addr, datum, outVal)
+        _                               -> throwError $ WrongOutType ExpectedScriptGotPubkey
 
     ds <- case datum of
       Left dsh -> throwError $ NoDatum ref dsh
@@ -292,15 +284,3 @@ typeScriptTxOutRef lookupRef ct ref = do
         Nothing  -> throwError UnknownRef
     tyOut <- typeScriptTxOut @out ct ref out
     pure $ TypedScriptTxOutRef ref tyOut
-
--- | Create a 'PubKeyTxOUt' from an existing 'TxOut' by checking that it has the right payment type.
-typePubKeyTxOut
-    :: forall m
-    . (MonadError ConnectionError m)
-    => TxOut
-    -> m PubKeyTxOut
-typePubKeyTxOut out@TxOut{txOutDatumHash} = do
-    case txOutDatumHash of
-        Nothing -> pure ()
-        Just _  -> throwError $ WrongOutType ExpectedPubkeyGotScript
-    pure $ PubKeyTxOut out

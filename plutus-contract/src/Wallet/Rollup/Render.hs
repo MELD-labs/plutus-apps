@@ -22,7 +22,6 @@ import Control.Monad.Reader
 import Crypto.Hash (Digest, SHA256, digestFromByteString)
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON))
 import Data.Aeson qualified as JSON
-import Data.Aeson.Extras qualified as JSON
 import Data.ByteArray qualified as BA
 import Data.ByteString qualified as BSS
 import Data.Foldable (fold)
@@ -33,15 +32,15 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Ledger (Address, Blockchain, PaymentPubKey, PaymentPubKeyHash, Tx (Tx), TxId, TxIn (TxIn), TxInType (..),
-               TxOut (TxOut), TxOutRef (TxOutRef, txOutRefId, txOutRefIdx), Value, txFee, txMint, txOutValue, txOutputs,
-               txSignatures)
-import Ledger.Ada (Ada (Lovelace))
-import Ledger.Ada qualified as Ada
+import Ledger (Address, Blockchain, PaymentPubKey, PaymentPubKeyHash, TxId, TxIn (TxIn), TxInType (..), TxOut (TxOut),
+               TxOutRef (TxOutRef, txOutRefId, txOutRefIdx), Value, txOutValue)
 import Ledger.Scripts (Datum (getDatum), Script, Validator, ValidatorHash (ValidatorHash), unValidatorScript)
 import Ledger.Value (CurrencySymbol (CurrencySymbol), TokenName (TokenName))
 import Ledger.Value qualified as Value
-import Plutus.V1.Ledger.Crypto (PubKey, PubKeyHash, Signature)
+import Legacy.Data.Aeson.Extras qualified as JSON
+import Legacy.Plutus.V1.Ledger.Crypto (PubKey, Signature)
+import Legacy.Plutus.V2.Ledger.Tx (Tx (Tx), txFee, txMint, txOutputs, txSignatures)
+import Plutus.V1.Ledger.Crypto (PubKeyHash)
 import PlutusTx qualified
 import PlutusTx.AssocMap qualified as AssocMap
 import PlutusTx.Prelude qualified as PlutusTx
@@ -213,11 +212,6 @@ instance Render BeneficialOwner where
         w <- render wallet
         p <- render pkh
         pure $ p <+> parens w
-
-instance Render Ada where
-    render ada@(Lovelace l)
-        | Ada.isZero ada = pure "-"
-        | otherwise = pure (pretty l)
 
 instance Render (Digest SHA256) where
     render = render . abbreviate 40 . JSON.encodeSerialise

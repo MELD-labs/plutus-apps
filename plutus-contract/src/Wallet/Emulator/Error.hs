@@ -16,13 +16,12 @@ import Prettyprinter (Pretty (pretty), viaShow, (<+>))
 import Ledger (PaymentPubKeyHash, ValidationError, Value)
 import Ledger.Constraints qualified as Constraints
 import Ledger.Tx.CardanoAPI (ToCardanoError)
-import Plutus.V1.Ledger.Ada (Ada)
 
 -- | An error thrown by wallet interactions.
 data WalletAPIError =
     InsufficientFunds Text
     -- ^ There were insufficient funds to perform the desired operation.
-    | ChangeHasLessThanNAda Value Ada
+    | ChangeHasLessThanNAda Value Integer
     -- ^ The change when selecting coins contains less than the minimum amount
     -- of Ada.
     | PaymentPrivateKeyNotFound PaymentPubKeyHash

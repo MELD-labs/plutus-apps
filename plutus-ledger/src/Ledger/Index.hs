@@ -75,23 +75,27 @@ import Ledger.Orphans ()
 import Ledger.Scripts
 import Ledger.TimeSlot qualified as TimeSlot
 import Ledger.Tx (txId)
-import Plutus.V1.Ledger.Ada (Ada)
-import Plutus.V1.Ledger.Ada qualified as Ada
+import Legacy.Plutus.V1.Ledger.Crypto (PubKey, Signature)
+import Legacy.Plutus.V1.Ledger.Slot qualified as Slot
+import Legacy.Plutus.V2.Ledger.Tx (Tx (..), collateralInputs, datumWitnesses, inputs, lookupRedeemer, referenceInputs,
+                                   signatures, updateUtxoCollateral)
 import Plutus.V1.Ledger.Address
-import Plutus.V1.Ledger.Api qualified as Api
-import Plutus.V1.Ledger.Contexts (ScriptContext (..), ScriptPurpose (..), TxInfo (..))
-import Plutus.V1.Ledger.Contexts qualified as Validation
 import Plutus.V1.Ledger.Credential (Credential (..))
 import Plutus.V1.Ledger.Interval qualified as Interval
 import Plutus.V1.Ledger.Scripts qualified as Scripts
-import Plutus.V1.Ledger.Slot qualified as Slot
-import Plutus.V1.Ledger.Tx
-import Plutus.V1.Ledger.TxId
 import Plutus.V1.Ledger.Value qualified as V
+import Plutus.V2.Ledger.Api qualified as Api
+import Plutus.V2.Ledger.Contexts (ScriptContext (..), ScriptPurpose (..), TxInfo (..))
+import Plutus.V2.Ledger.Contexts qualified as Validation
+import Plutus.V2.Ledger.Tx (OutputDatum (OutputDatum, OutputDatumHash), RedeemerPtr (..), ScriptTag (Mint), TxId,
+                            TxIn (..), TxInType (ConsumePublicKeyAddress, ConsumeScriptAddress),
+                            TxOut (txOutAddress, txOutDatum, txOutValue), TxOutRef, pubKeyTxIns, scriptTxIns)
 import PlutusTx (toBuiltinData)
 import PlutusTx.Numeric qualified as P
 import Prettyprinter (Pretty)
-import Prettyprinter.Extras (PrettyShow (..))
+
+import Legacy.Prettyprinter.Extras (PrettyShow (..))
+import PlutusTx.AssocMap qualified as AssocMap
 
 -- | Context for validating transactions. We need access to the unspent
 --   transaction outputs of the blockchain, and we can throw 'ValidationError's.
@@ -140,6 +144,8 @@ data ValidationError =
     -- ^ For pay-to-script outputs: the validator script provided in the transaction input does not match the hash specified in the transaction output.
     | InvalidDatumHash Datum DatumHash
     -- ^ For pay-to-script outputs: the datum provided in the transaction input does not match the hash specified in the transaction output.
+    | InvalidInlineDatum Datum Datum
+    -- ^ For pay-to-script outputs: the datum provided in the transaction input does not match the inline datum specified in the transaction output.
     | MissingRedeemer RedeemerPtr
     -- ^ For scripts that take redeemers: no redeemer was provided for this script.
     | InvalidSignature PubKey Signature
@@ -331,11 +337,14 @@ matchInputOutput :: ValidationMonad m
     -> TxOut
     -- ^ The unspent transaction output we are trying to unlock
     -> m InOutMatch
-matchInputOutput txid mp txin txo = case (txInType txin, txOutDatumHash txo, txOutAddress txo) of
-    (Just (ConsumeScriptAddress v r d), Just dh, Address{addressCredential=ScriptCredential vh}) -> do
+matchInputOutput txid mp txin txo = case (txInType txin, txOutDatum txo, txOutAddress txo) of
+    (Just (ConsumeScriptAddress v r d), OutputDatumHash dh, Address{addressCredential=ScriptCredential vh}) -> do
         unless (datumHash d == dh) $ throwError $ InvalidDatumHash d dh
         unless (validatorHash v == vh) $ throwError $ InvalidScriptHash v vh
-
+        pure $ ScriptMatch (txInRef txin) v r d
+    (Just (ConsumeScriptAddress v r d), OutputDatum d', Address{addressCredential=ScriptCredential vh}) -> do
+        unless (d == d') $ throwError $ InvalidInlineDatum d d'
+        unless (validatorHash v == vh) $ throwError $ InvalidScriptHash v vh
         pure $ ScriptMatch (txInRef txin) v r d
     (Just ConsumePublicKeyAddress, _, Address{addressCredential=PubKeyCredential pkh}) ->
         let sigMatches = flip fmap (Map.toList mp) $ \(pk,sig) ->
@@ -385,8 +394,8 @@ checkPositiveValues t =
 -- Minimum required Ada for each tx output.
 --
 -- TODO: In the future, make the value configurable.
-minAdaTxOut :: Ada
-minAdaTxOut = Ada.lovelaceOf 2_000_000
+minAdaTxOut :: Integer
+minAdaTxOut = 2_000_000
 
 -- | Check if each transaction outputs produced at least two Ada (this is a
 -- restriction on the real Cardano network).
@@ -397,25 +406,25 @@ minAdaTxOut = Ada.lovelaceOf 2_000_000
 checkMinAdaInTxOutputs :: ValidationMonad m => Tx -> m ()
 checkMinAdaInTxOutputs t@Tx { txOutputs } =
     for_ txOutputs $ \txOut ->
-        if Ada.fromValue (txOutValue txOut) >= minAdaTxOut
+        if V.valueOf (txOutValue txOut) V.adaSymbol V.adaToken >= minAdaTxOut
             then pure ()
             else throwError $ ValueContainsLessThanMinAda t txOut
 
 -- | Check if the fees are paid exclusively in Ada.
 checkFeeIsAda :: ValidationMonad m => Tx -> m ()
 checkFeeIsAda t =
-    if (Ada.toValue $ Ada.fromValue $ txFee t) == txFee t
+    if (V.singleton V.adaSymbol V.adaToken $ V.valueOf (txFee t) V.adaSymbol V.adaToken) == txFee t
     then pure ()
     else throwError $ NonAdaFees t
 
 -- | Minimum transaction fee.
 minFee :: Tx -> V.Value
-minFee = const (Ada.lovelaceValueOf 10)
+minFee = const (V.singleton V.adaSymbol V.adaToken 10)
 
 -- | TODO Should be calculated based on the maximum script size permitted on
 -- the Cardano blockchain.
-maxFee :: Ada
-maxFee = Ada.lovelaceOf 1_000_000
+maxFee :: Integer
+maxFee = 1_000_000
 
 -- | Check that transaction fee is bigger than the minimum fee.
 --   Skip the check on the first transaction (no inputs).
@@ -430,17 +439,20 @@ mkTxInfo :: ValidationMonad m => Tx -> m TxInfo
 mkTxInfo tx = do
     slotCfg <- vctxSlotConfig <$> ask
     txins <- traverse mkIn $ Set.toList $ view inputs tx
+    txReferenceIns <- traverse mkIn $ Set.toList $ view referenceInputs tx
     let ptx = TxInfo
             { txInfoInputs = txins
             , txInfoOutputs = txOutputs tx
             , txInfoMint = txMint tx
             , txInfoFee = txFee tx
             , txInfoDCert = [] -- DCerts not supported in emulator
-            , txInfoWdrl = [] -- Withdrawals not supported in emulator
+            , txInfoWdrl = AssocMap.empty -- Withdrawals not supported in emulator
             , txInfoValidRange = TimeSlot.slotRangeToPOSIXTimeRange slotCfg $ txValidRange tx
             , txInfoSignatories = fmap pubKeyHash $ Map.keys (tx ^. signatures)
-            , txInfoData = Map.toList (tx ^. datumWitnesses)
+            , txInfoData = AssocMap.fromList $  Map.toList $ tx ^. datumWitnesses
             , txInfoId = txId tx
+            , txInfoReferenceInputs = txReferenceIns
+            , txInfoRedeemers = AssocMap.fromList $  Map.toList $ txSpendingRedeemers tx
             }
     pure ptx
 

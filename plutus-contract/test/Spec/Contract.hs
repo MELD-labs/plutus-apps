@@ -27,10 +27,11 @@ import Test.Tasty (TestTree, testGroup)
 
 import Ledger (Address, PaymentPubKeyHash, Validator)
 import Ledger qualified
-import Ledger.Ada qualified as Ada
 import Ledger.Constraints qualified as Constraints
 import Ledger.Scripts (datumHash)
 import Ledger.Tx (getCardanoTxId)
+import Ledger.Value (adaValueOf)
+import Legacy.Plutus.V2.Ledger.Tx (Tx)
 import Plutus.Contract as Con
 import Plutus.Contract.State qualified as State
 import Plutus.Contract.Test (Shrinking (DoShrink, DontShrink), TracePredicate, assertAccumState, assertContractError,
@@ -47,7 +48,7 @@ import Plutus.Trace.Emulator.Types (ContractInstanceLog (_cilMessage),
                                     ContractInstanceState (ContractInstanceState, instContractState),
                                     UserThreadMsg (UserLog))
 import Plutus.V1.Ledger.Scripts (Datum (Datum), DatumHash)
-import Plutus.V1.Ledger.Tx (TxOut (txOutDatumHash))
+import Plutus.V2.Ledger.Tx (TxOut (txOutDatum))
 import PlutusTx qualified
 import Prelude hiding (not)
 import Wallet.Emulator qualified as EM
@@ -135,10 +136,10 @@ tests =
                 (waitingForSlot theContract tag 20)
                 (void $ activateContract w1 theContract tag)
 
-        , let smallTx = Constraints.mustPayToPubKey (mockWalletPaymentPubKeyHash w2) (Ada.adaValueOf 10)
+        , let smallTx = Constraints.mustPayToPubKey (mockWalletPaymentPubKeyHash w2) (adaValueOf 10)
               theContract :: Contract () Schema ContractError () = submitTx smallTx >>= awaitTxConfirmed . getCardanoTxId >> submitTx smallTx >>= awaitTxConfirmed . getCardanoTxId
           in run "handle several blockchain events"
-                (walletFundsChange w1 (Ada.adaValueOf (-20))
+                (walletFundsChange w1 (adaValueOf (-20))
                     .&&. assertNoFailedTransactions
                     .&&. assertDone theContract tag (const True) "all blockchain events should be processed")
                 (void $ activateContract w1 theContract tag >> Trace.waitUntilSlot 3)
@@ -166,10 +167,10 @@ tests =
                 (void $ activateContract w1 theContract tag)
 
         , run "pay to wallet"
-            (walletFundsChange w1 (Ada.adaValueOf (-20))
-                .&&. walletFundsChange w2 (Ada.adaValueOf 20)
+            (walletFundsChange w1 (adaValueOf (-20))
+                .&&. walletFundsChange w2 (adaValueOf 20)
                 .&&. assertNoFailedTransactions)
-            (void $ Trace.payToWallet w1 w2 (Ada.adaValueOf 20))
+            (void $ Trace.payToWallet w1 w2 (adaValueOf 20))
 
         , let theContract :: Contract () Schema ContractError () =
                   void $ awaitUtxoProduced (mockWalletAddress w2)
@@ -177,7 +178,7 @@ tests =
             (assertDone theContract tag (const True) "should receive a notification")
             (void $ do
                 activateContract w1 theContract tag
-                Trace.payToWallet w1 w2 (Ada.adaValueOf 20)
+                Trace.payToWallet w1 w2 (adaValueOf 20)
                 Trace.waitNSlots 1
             )
 
@@ -189,7 +190,7 @@ tests =
             (assertDone theContract tag (const True) "should receive a notification")
             (void $ do
                 activateContract w1 theContract tag
-                Trace.payToWallet w1 w2 (Ada.adaValueOf 20)
+                Trace.payToWallet w1 w2 (adaValueOf 20)
                 Trace.waitNSlots 1
             )
 
@@ -198,30 +199,31 @@ tests =
                 (assertDone theContract tag (== mockWalletPaymentPubKeyHash w2) "should return the wallet's public key")
                 (void $ activateContract w2 (void theContract) tag)
 
-        , let payment = Constraints.mustPayToPubKey (mockWalletPaymentPubKeyHash w2) (Ada.adaValueOf 10)
+        , let payment = Constraints.mustPayToPubKey (mockWalletPaymentPubKeyHash w2) (adaValueOf 10)
               theContract :: Contract () Schema ContractError () = submitTx payment >>= awaitTxConfirmed . Ledger.getCardanoTxId
           in run "await tx confirmed"
             (assertDone theContract tag (const True) "should be done")
             (activateContract w1 theContract tag >> void (Trace.waitNSlots 1))
 
-        , let payment = Constraints.mustPayToPubKey (mockWalletPaymentPubKeyHash w2) (Ada.adaValueOf 10)
+        , let payment = Constraints.mustPayToPubKey (mockWalletPaymentPubKeyHash w2) (adaValueOf 10)
               theContract :: Contract () Schema ContractError TxStatus =
                 submitTx payment >>= awaitTxStatusChange . Ledger.getCardanoTxId
           in run "await change in tx status"
             (assertDone theContract tag ((==) (Committed TxValid ())) "should be done")
             (activateContract w1 theContract tag >> void (Trace.waitNSlots 1))
 
-        , let c :: Contract [Maybe DatumHash] Schema ContractError () = do
+        , let c :: Contract [Ledger.OutputDatum] Schema ContractError () = do
                 let w2PubKeyHash = mockWalletPaymentPubKeyHash w2
-                let payment = Constraints.mustPayWithDatumToPubKey w2PubKeyHash datum (Ada.adaValueOf 10)
+                let payment = Constraints.mustPayWithDatumToPubKey w2PubKeyHash datum (adaValueOf 10)
                 tx <- submitTx payment
                 let txOuts = fmap fst $ Ledger.getCardanoTxOutRefs tx
                 -- tell the tx out' datum hash that was specified by 'mustPayWithDatumToPubKey'
-                tell [txOutDatumHash (txOuts !! 1)]
+                tell [txOutDatum (txOuts !! 1)]
 
               datum = Datum $ PlutusTx.toBuiltinData (23 :: Integer)
-              isExpectedDatumHash [Just hash] = hash == datumHash datum
-              isExpectedDatumHash _           = False
+              isExpectedDatumHash [Ledger.OutputDatumHash hash] = hash == datumHash datum
+              isExpectedDatumHash [Ledger.OutputDatum dt]       = dt == datum
+              isExpectedDatumHash _                             = False
 
           in run "mustPayWithDatumToPubKey produces datum in TxOut"
             ( assertAccumState c tag isExpectedDatumHash "should be done"
@@ -233,11 +235,11 @@ tests =
         -- in case of two transactions with 'mustPayWithDatumToPubKey'
         , let c1 :: Contract [Maybe DatumHash] Schema ContractError () = do
                 let w2PubKeyHash = mockWalletPaymentPubKeyHash w2
-                let payment = Constraints.mustPayWithDatumToPubKey w2PubKeyHash datum1 (Ada.adaValueOf 10)
+                let payment = Constraints.mustPayWithDatumToPubKey w2PubKeyHash datum1 (adaValueOf 10)
                 void $ submitTx payment
               c2 :: Contract [Maybe DatumHash] Schema ContractError () = do
                 let w3PubKeyHash = mockWalletPaymentPubKeyHash w3
-                let payment = Constraints.mustPayWithDatumToPubKey w3PubKeyHash datum2 (Ada.adaValueOf 50)
+                let payment = Constraints.mustPayWithDatumToPubKey w3PubKeyHash datum2 (adaValueOf 50)
                 void $ submitTx payment
 
               datum1 = Datum $ PlutusTx.toBuiltinData (23 :: Integer)
@@ -254,7 +256,7 @@ tests =
                 -- Submit a payment tx of 10 lovelace to W2.
                 let w2PubKeyHash = mockWalletPaymentPubKeyHash w2
                 let payment = Constraints.mustPayToPubKey w2PubKeyHash
-                                                          (Ada.adaValueOf 10)
+                                                          (adaValueOf 10)
                 tx <- submitTx payment
                 -- There should be 2 utxos. We suppose the first belongs to the
                 -- wallet calling the contract and the second one to W2.
@@ -383,7 +385,7 @@ type Schema =
         .\/ Endpoint "4" Int
         .\/ Endpoint "ep" ()
         .\/ Endpoint "5" [ActiveEndpoint]
-        .\/ Endpoint "6" Ledger.Tx
+        .\/ Endpoint "6" Tx
 
 initial :: _
 initial = State.initialiseContract loopCheckpointContract

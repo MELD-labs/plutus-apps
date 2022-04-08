@@ -16,7 +16,7 @@ import Cardano.Node.Types (PABServerConfig)
 import Cardano.Wallet.Types qualified as Wallet
 import Control.Lens.TH (makePrisms)
 import Control.Monad.Freer.Extras.Beam (BeamError)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON, FromJSONKey, ToJSON, ToJSONKey)
 import Data.Default (Default, def)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -25,9 +25,10 @@ import Data.Time.Units (Second)
 import Data.UUID (UUID)
 import Data.UUID.Extras qualified as UUID
 import GHC.Generics (Generic)
-import Ledger (Block, Blockchain, Tx, TxId, eitherTx, txId)
+import Ledger (Block, Blockchain, TxId, eitherTx, txId)
 import Ledger.Index (UtxoIndex (UtxoIndex))
 import Ledger.Index qualified as UtxoIndex
+import Legacy.Plutus.V2.Ledger.Tx (Tx)
 import Plutus.ChainIndex.Types (Point (..))
 import Plutus.Contract.Types (ContractError)
 import Plutus.PAB.Instances ()
@@ -216,7 +217,7 @@ data ChainOverview =
         , chainOverviewUtxoIndex      :: UtxoIndex
         }
     deriving (Show, Eq, Generic)
-    deriving anyclass (ToJSON, FromJSON)
+    deriving anyclass (ToJSON, FromJSON, ToJSONKey, FromJSONKey)
 
 mkChainOverview :: Blockchain -> ChainOverview
 mkChainOverview = foldl reducer emptyChainOverview

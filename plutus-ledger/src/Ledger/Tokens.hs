@@ -7,7 +7,7 @@ module Ledger.Tokens(
   , paidTo
   ) where
 
-import Plutus.V1.Ledger.Contexts
+import Plutus.V2.Ledger.Contexts
 import Plutus.V1.Ledger.Value (AssetClass, Value, leq)
 import Plutus.V1.Ledger.Value qualified as Value
 

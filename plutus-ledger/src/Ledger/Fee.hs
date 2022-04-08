@@ -11,8 +11,7 @@ import Data.Aeson (FromJSON, ToJSON)
 import Data.Default (Default (def))
 import GHC.Generics (Generic)
 import Ledger.Index (minFee)
-import Plutus.V1.Ledger.Ada (Ada)
-import Plutus.V1.Ledger.Ada qualified as Ada
+import Plutus.V1.Ledger.Value qualified as V
 
 -- | Datatype to configure the fee in a transaction.
 --
@@ -20,19 +19,18 @@ import Plutus.V1.Ledger.Ada qualified as Ada
 -- <SIZE_DEPENDANT_SCRIPTS_FEE>.
 data FeeConfig =
     FeeConfig
-        { fcConstantFee      :: Ada    -- ^ Constant fee per transaction in lovelace
-        , fcScriptsFeeFactor :: Double -- ^ Factor by which to multiply the size-dependent scripts fee
+        { fcConstantFee      :: Integer -- ^ Constant fee per transaction in lovelace
+        , fcScriptsFeeFactor :: Double  -- ^ Factor by which to multiply the size-dependent scripts fee
         }
     deriving (Show, Eq, Generic, ToJSON, FromJSON)
 
 instance Default FeeConfig where
-  def = FeeConfig { fcConstantFee = Ada.fromValue $ minFee mempty
+  def = FeeConfig { fcConstantFee = V.valueOf (minFee mempty) V.adaSymbol V.adaToken
                   , fcScriptsFeeFactor = 1.0
                   }
 
 calcFees :: FeeConfig
          -> Integer -- ^ Scripts fee in lovelace
-         -> Ada -- ^ Fees in lovelace
+         -> Integer -- ^ Fees in lovelace
 calcFees FeeConfig { fcConstantFee , fcScriptsFeeFactor } scriptsFee =
-     fcConstantFee
-  <> Ada.lovelaceOf (floor $ fcScriptsFeeFactor * fromIntegral scriptsFee)
+     fcConstantFee + (floor $ fcScriptsFeeFactor * fromIntegral scriptsFee)

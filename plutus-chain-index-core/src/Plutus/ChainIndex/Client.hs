@@ -28,6 +28,7 @@ import Data.Proxy (Proxy (..))
 import Ledger (Datum, DatumHash, MintingPolicy, MintingPolicyHash, Redeemer, RedeemerHash, StakeValidator,
                StakeValidatorHash, Validator, ValidatorHash)
 import Ledger.Tx (ChainIndexTxOut, TxOutRef)
+import Legacy.Plutus.V1.Ledger.Scripts ()
 import Network.HTTP.Types.Status (Status (..))
 import Plutus.ChainIndex.Api (API, IsUtxoResponse, TxoAtAddressRequest (TxoAtAddressRequest), TxosResponse,
                               UtxoAtAddressRequest (UtxoAtAddressRequest),

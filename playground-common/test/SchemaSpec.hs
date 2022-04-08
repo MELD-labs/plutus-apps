@@ -13,8 +13,7 @@ module SchemaSpec
 import Data.Functor.Foldable (Fix (Fix))
 import Data.Text (Text)
 import GHC.Generics (Generic)
-import Ledger.Ada (lovelaceValueOf)
-import Ledger.Value (Value)
+import Ledger.Value (Value, adaSymbol, adaToken, singleton)
 import Playground.Types (PayToWalletParams (PayToWalletParams), payTo, value)
 import Schema (FormArgument,
                FormArgumentF (FormArrayF, FormBoolF, FormIntF, FormIntegerF, FormObjectF, FormRadioF, FormStringF, FormValueF),
@@ -97,7 +96,7 @@ toArgumentTests =
                   (toArgument Medium)
                   (formRadioF ["Small", "Medium", "Large"] (Just "Medium"))
               let payTo = WalletNumber 1
-                  value = lovelaceValueOf 20
+                  value = singleton adaSymbol adaToken 20
               assertEqual
                   "PayToWalletParams"
                   (toArgument PayToWalletParams {payTo, value})

@@ -22,8 +22,9 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Ledger (Block, Blockchain, OnChainTx (..), TxIn (TxIn), TxOut (TxOut), ValidationPhase (..), Value,
-               consumableInputs, eitherTx, outValue, txInRef, txOutRefId, txOutRefIdx, txOutValue, txOutputs)
+               consumableInputs, eitherTx, outValue, txInRef, txOutRefId, txOutRefIdx, txOutValue)
 import Ledger.Tx qualified as Tx
+import Legacy.Plutus.V2.Ledger.Tx (txOutputs)
 import PlutusTx.Monoid (inv)
 import Wallet.Emulator.Chain (ChainEvent (..))
 import Wallet.Rollup.Types

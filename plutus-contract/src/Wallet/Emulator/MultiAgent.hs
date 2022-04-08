@@ -35,9 +35,10 @@ import GHC.Generics (Generic)
 import Prettyprinter (Pretty (pretty), colon, (<+>))
 
 import Ledger hiding (to, value)
-import Ledger.Ada qualified as Ada
 import Ledger.AddressMap qualified as AM
 import Ledger.Index qualified as Index
+import Ledger.Value qualified as V
+import Legacy.Plutus.V2.Ledger.Tx
 import Plutus.ChainIndex.Emulator qualified as ChainIndex
 import Plutus.Contract.Error (AssertionError (GenericAssertion))
 import Plutus.Trace.Emulator.Types (ContractInstanceLog, EmulatedWalletEffects, EmulatedWalletEffects', UserThreadMsg)
@@ -291,6 +292,7 @@ emulatorStateInitialDist :: Map PaymentPubKeyHash Value -> EmulatorState
 emulatorStateInitialDist mp = emulatorStatePool [EmulatorTx tx] where
     tx = Tx
             { txInputs = mempty
+            , txReferenceInputs = mempty
             , txCollateral = mempty
             , txOutputs = Map.toList mp >>= mkOutputs
             , txMint = foldMap snd $ Map.toList mp
@@ -299,15 +301,16 @@ emulatorStateInitialDist mp = emulatorStatePool [EmulatorTx tx] where
             , txMintScripts = mempty
             , txSignatures = mempty
             , txRedeemers = mempty
+            , txSpendingRedeemers = mempty
             , txData = mempty
             }
     -- See [Creating wallets with multiple outputs]
     mkOutputs (key, vl) = mkOutput key <$> splitHeadinto10 (Wallet.splitOffAdaOnlyValue vl)
     splitHeadinto10 []       = []
-    splitHeadinto10 (vl:vls) = replicate (fromIntegral count) (Ada.toValue . (`div` count) . Ada.fromValue $ vl) ++ vls
+    splitHeadinto10 (vl:vls) = replicate (fromIntegral count) (V.singleton V.adaSymbol V.adaToken . (`div` count) $ V.valueOf vl V.adaSymbol V.adaToken) ++ vls
         where
             -- Make sure we don't make the outputs too small
-            count = min 10 $ Ada.fromValue vl `div` minAdaTxOut
+            count = min 10 $ V.valueOf vl V.adaSymbol V.adaToken `div` minAdaTxOut
     mkOutput key vl = pubKeyHashTxOut vl (unPaymentPubKeyHash key)
 
 type MultiAgentEffs =

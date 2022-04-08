@@ -16,6 +16,7 @@ import Data.OpenApi.Schema qualified as OpenApi
 import GHC.Generics
 import Ledger
 import Ledger.Credential (Credential (..))
+import Legacy.Plutus.V2.Ledger.Tx (Tx)
 import Prettyprinter (Pretty, pretty, viaShow)
 
 data TxKey =

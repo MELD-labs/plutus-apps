@@ -38,7 +38,7 @@ import Control.Lens (makePrisms, view)
 import Control.Monad (join)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Aeson qualified as JSON
-import Data.Aeson.Extras qualified as JSON
+import Legacy.Data.Aeson.Extras qualified as JSON
 import Data.ByteString qualified as BS
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -48,16 +48,15 @@ import Data.Set qualified as Set
 import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8')
 import GHC.Generics (Generic)
-import Ledger.Tx (spentOutputs, txId, unspentOutputsTx, updateUtxo)
+import Ledger.Tx (txId, unspentOutputsTx, updateUtxo)
 import Prettyprinter (Pretty (..), (<+>))
 
 import Data.Either (fromRight)
 import Data.OpenApi qualified as OpenApi
 import Plutus.V1.Ledger.Crypto
 import Plutus.V1.Ledger.Scripts
-import Plutus.V1.Ledger.Tx (Tx, TxIn, TxOut, TxOutRef (..), TxOutTx (TxOutTx, txOutTxOut, txOutTxTx), collateralInputs,
-                            inputs, txOutDatum, txOutPubKey, txOutValue, txOutputs, updateUtxoCollateral, validValuesTx)
-import Plutus.V1.Ledger.TxId
+import Plutus.V2.Ledger.Tx (TxIn, TxOut, TxOutRef (..), txOutDatum, txOutPubKey, txOutValue, TxId, OutputDatum)
+import Legacy.Plutus.V2.Ledger.Tx (Tx (txOutputs), TxOutTx(..), spentOutputs, validValuesTx, collateralInputs, inputs, updateUtxoCollateral)
 import Plutus.V1.Ledger.Value (Value)
 
 -- | Block identifier (usually a hash)
@@ -136,8 +135,8 @@ value :: Blockchain -> TxOutRef -> Maybe Value
 value bc o = txOutValue <$> out bc o
 
 -- | Determine the data script that a transaction output refers to.
-datumTxo :: Blockchain -> TxOutRef -> Maybe DatumHash
-datumTxo bc o = txOutDatum =<< out bc o
+datumTxo :: Blockchain -> TxOutRef -> Maybe OutputDatum
+datumTxo bc o = txOutDatum <$> out bc o
 
 -- | Determine the public key that locks a transaction output, if there is one.
 pubKeyTxo :: Blockchain -> TxOutRef -> Maybe PubKeyHash

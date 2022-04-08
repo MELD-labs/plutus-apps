@@ -22,9 +22,9 @@ module Plutus.Trace.Effects.Waiting(
 import Control.Monad.Freer (Eff, Member, type (~>))
 import Control.Monad.Freer.Coroutine (Yield)
 import Control.Monad.Freer.TH (makeEffect)
-import Ledger.Slot (Slot)
 import Ledger.Time (DiffMilliSeconds, POSIXTime, fromMilliSeconds)
 import Ledger.TimeSlot qualified as TimeSlot
+import Legacy.Plutus.V1.Ledger.Slot (Slot)
 import Numeric.Natural (Natural)
 import Plutus.Trace.Emulator.Types (EmulatorMessage (NewSlot))
 import Plutus.Trace.Scheduler (EmSystemCall, Priority (Sleeping), sleep)

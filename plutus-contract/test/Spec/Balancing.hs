@@ -13,7 +13,6 @@ import Test.Tasty (TestTree, testGroup)
 
 import Ledger (Address, Validator, validatorHash)
 import Ledger qualified
-import Ledger.Ada qualified as Ada
 import Ledger.Constraints qualified as Constraints
 import Ledger.Generators (someTokenValue)
 import Ledger.Scripts (mintingPolicyHash, unitDatum, unitRedeemer)
@@ -46,7 +45,7 @@ balanceTxnMinAda =
 
         contract :: Contract () EmptySchema ContractError ()
         contract = do
-            let constraints1 = Constraints.mustPayToOtherScript vHash unitDatum (Value.scale 100 ff <> Ada.toValue Ledger.minAdaTxOut)
+            let constraints1 = Constraints.mustPayToOtherScript vHash unitDatum (Value.scale 100 ff <> Value.singleton Value.adaSymbol Value.adaToken Ledger.minAdaTxOut)
                 utx1 = either (error . show) id $ Constraints.mkTx @Void mempty constraints1
             submitTxConfirmed utx1
             utxo <- utxosAt someAddress
@@ -78,7 +77,7 @@ balanceTxnMinAda2 =
         setupContract :: Contract () EmptySchema ContractError ()
         setupContract = do
             -- Make sure there is a utxo with 1 A, 1 B, and 4 ada at w2
-            submitTxConfirmed $ mkTx mempty (payToWallet w2 (vA 1 <> vB 1 <> Value.scale 2 (Ada.toValue Ledger.minAdaTxOut)))
+            submitTxConfirmed $ mkTx mempty (payToWallet w2 (vA 1 <> vB 1 <> Value.scale 2 (Value.singleton Value.adaSymbol Value.adaToken Ledger.minAdaTxOut)))
             -- Make sure there is a UTxO with 1 B and datum () at the script
             submitTxConfirmed $ mkTx mempty (Constraints.mustPayToOtherScript vHash unitDatum (vB 1))
             -- utxo0 @ wallet2 = 1 A, 1 B, 4 Ada
@@ -117,7 +116,7 @@ balanceTxnNoExtraOutput =
             let val = vL 200
                 lookups = Constraints.mintingPolicy coinMintingPolicy
                 constraints = Constraints.mustMintValue val
-                    <> Constraints.mustPayToPubKey pkh (val <> Ada.toValue Ledger.minAdaTxOut)
+                    <> Constraints.mustPayToPubKey pkh (val <> Value.singleton Value.adaSymbol Value.adaToken Ledger.minAdaTxOut)
 
             tx <- submitUnbalancedTx $ mkTx lookups constraints
             tell [length $ Ledger.getCardanoTxOutRefs tx]

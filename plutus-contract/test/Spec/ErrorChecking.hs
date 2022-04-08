@@ -18,7 +18,6 @@ import Data.Data
 import Data.Row
 import Test.Tasty
 
-import Ledger.Ada qualified as Ada
 import Ledger.Address
 import Ledger.Constraints
 import Ledger.Contexts (ScriptContext (..))
@@ -26,6 +25,7 @@ import Ledger.Scripts
 import Ledger.Tx
 import Ledger.Typed.Scripts qualified as Scripts hiding (validatorHash)
 import Ledger.Typed.Scripts.Validators hiding (validatorHash)
+import Ledger.Value qualified as Value
 import Plutus.Contract as Contract
 import Plutus.Contract.Test hiding (not)
 import Plutus.Contract.Test.ContractModel
@@ -139,7 +139,7 @@ contract = selectList [failFalseC, failHeadNilC, divZeroC, divZeroTraceC, succes
     run validator = void $ do
       let addr = scriptAddress (validatorScript validator)
           hash = validatorHash (validatorScript validator)
-          tx = mustPayToOtherScript hash (Datum $ toBuiltinData ()) (Ada.adaValueOf 10)
+          tx = mustPayToOtherScript hash (Datum $ toBuiltinData ()) (Value.adaValueOf 10)
       r <- submitTx tx
       awaitTxConfirmed (getCardanoTxId r)
       utxos <- utxosAt addr

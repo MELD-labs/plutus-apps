@@ -31,7 +31,6 @@ import Data.Coerce (coerce)
 import Data.Function ((&))
 import Data.Map.Strict qualified as Map
 import Data.Proxy (Proxy (Proxy))
-import Ledger.Ada qualified as Ada
 import Ledger.CardanoWallet qualified as CW
 import Ledger.TimeSlot (SlotConfig)
 import Network.HTTP.Client (defaultManagerSettings, newManager)
@@ -56,7 +55,7 @@ app trace txSendHandle chainSyncHandle chainIndexEnv mVarState slotCfg =
     hoistServer
         (Proxy @(API WalletId))
         (processWalletEffects trace txSendHandle chainSyncHandle chainIndexEnv mVarState slotCfg) $
-            (\funds -> createWallet (Ada.lovelaceOf <$> funds)) :<|>
+            (\funds -> createWallet funds) :<|>
             (\w tx -> multiWallet (Wallet Nothing w) (submitTxn tx) >>= const (pure NoContent)) :<|>
             (getWalletInfo >=> maybe (throwError err404) pure ) :<|>
             (\w -> multiWallet (Wallet Nothing w) . balanceTx) :<|>

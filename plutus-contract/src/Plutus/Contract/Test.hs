@@ -108,9 +108,10 @@ import Test.Tasty.Golden (goldenVsString)
 import Test.Tasty.HUnit qualified as HUnit
 import Test.Tasty.Providers (TestTree)
 
-import Ledger.Ada qualified as Ada
 import Ledger.Constraints.OffChain (UnbalancedTx)
-import Ledger.Tx (Tx, onCardanoTx)
+import Ledger.Tx (onCardanoTx)
+import Legacy.Plutus.V2.Ledger.Tx (Tx)
+import Legacy.Plutus.V2.Ledger.Tx qualified as Ledger
 import Plutus.Contract.Effects qualified as Requests
 import Plutus.Contract.Request qualified as Request
 import Plutus.Contract.Resumable (Request (..), Response (..))
@@ -125,8 +126,8 @@ import Ledger.Address (Address)
 import Ledger.Generators (GeneratorModel, Mockchain (..))
 import Ledger.Generators qualified as Gen
 import Ledger.Index (ScriptValidationEvent, ValidationError)
-import Ledger.Slot (Slot)
-import Ledger.Value (Value)
+import Ledger.Value (Value, adaSymbol, adaToken, valueOf)
+import Legacy.Plutus.V1.Ledger.Slot (Slot)
 
 import Data.IORef
 import Plutus.Contract.Test.Coverage
@@ -376,8 +377,9 @@ getTxOutDatum ::
   Ledger.TxOutRef ->
   Ledger.TxOutTx ->
   Maybe d
-getTxOutDatum _ (Ledger.TxOutTx _ (Ledger.TxOut _ _ Nothing)) = Nothing
-getTxOutDatum _ (Ledger.TxOutTx tx' (Ledger.TxOut _ _ (Just datumHash))) =
+getTxOutDatum _ (Ledger.TxOutTx _ (Ledger.TxOut _ _ Ledger.NoOutputDatum _)) = Nothing
+getTxOutDatum _ (Ledger.TxOutTx _ (Ledger.TxOut _ _ (Ledger.OutputDatum datum) _)) = fromBuiltinData @d $ Ledger.getDatum datum
+getTxOutDatum _ (Ledger.TxOutTx tx' (Ledger.TxOut _ _ (Ledger.OutputDatumHash datumHash) _)) =
     Ledger.lookupDatum tx' datumHash >>= (Ledger.getDatum >>> fromBuiltinData @d)
 
 dataAtAddress :: forall d . FromData d => Address -> ([d] -> Bool) -> TracePredicate
@@ -575,7 +577,7 @@ walletFundsChangeImpl exact w dlt = TracePredicate $
             tell @(Doc Void) $ vsep $
                 [ "Expected funds of" <+> pretty w <+> "to change by"
                 , " " <+> viaShow dlt] ++
-                (if exact then [] else ["  (excluding" <+> viaShow (Ada.getLovelace (Ada.fromValue fees)) <+> "lovelace in fees)" ]) ++
+                (if exact then [] else ["  (excluding" <+> viaShow (valueOf fees adaSymbol adaToken) <+> "lovelace in fees)" ]) ++
                 if initialValue == finalValue
                 then ["but they did not change"]
                 else ["but they changed by", " " <+> viaShow (finalValue P.- initialValue),

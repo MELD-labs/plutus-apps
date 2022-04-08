@@ -32,12 +32,13 @@ import Data.Monoid (Ap (Ap))
 import Data.Traversable (for)
 import GHC.Generics (Generic)
 import Ledger (Block, Blockchain, CardanoTx (..), OnChainTx (..), ScriptValidationEvent, Slot (..),
-               SomeCardanoApiTx (SomeTx), Tx (..), TxId, TxIn (txInRef), TxOut (txOutValue), Value, eitherTx,
-               getCardanoTxId, mergeCardanoTxWith, onCardanoTx)
+               SomeCardanoApiTx (SomeTx), TxId, TxIn (txInRef), TxOut (txOutValue), Value, eitherTx, getCardanoTxId,
+               mergeCardanoTxWith, onCardanoTx)
 import Ledger.Index qualified as Index
 import Ledger.Interval qualified as Interval
 import Ledger.TimeSlot (SlotConfig)
 import Ledger.Validation qualified as Validation
+import Legacy.Plutus.V2.Ledger.Tx (Tx (..))
 import Plutus.Contract.Util (uncurry3)
 import Prettyprinter
 

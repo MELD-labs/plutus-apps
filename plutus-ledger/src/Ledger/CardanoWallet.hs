@@ -29,7 +29,7 @@ import Cardano.Wallet.Primitive.Types qualified as CW
 import Codec.Serialise (serialise)
 import Crypto.Hash qualified as Crypto
 import Data.Aeson (FromJSON, ToJSON)
-import Data.Aeson.Extras (encodeByteString)
+import Legacy.Data.Aeson.Extras (encodeByteString)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BSL
 import Data.Hashable (Hashable (..))
@@ -39,7 +39,7 @@ import Data.Text qualified as T
 import GHC.Generics (Generic)
 import Ledger (PaymentPrivateKey (PaymentPrivateKey), PaymentPubKey (PaymentPubKey, unPaymentPubKey),
                PaymentPubKeyHash (PaymentPubKeyHash))
-import Ledger.Crypto (PubKey (..))
+import Legacy.Plutus.V1.Ledger.Crypto (PubKey(getPubKey))
 import Ledger.Crypto qualified as Crypto
 import Plutus.V1.Ledger.Bytes (LedgerBytes (getLedgerBytes))
 import Servant.API (FromHttpApiData, ToHttpApiData)

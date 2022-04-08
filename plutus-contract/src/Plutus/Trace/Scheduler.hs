@@ -68,9 +68,9 @@ import Data.Map as Map
 import Data.Sequence (Seq (..))
 import Data.Sequence qualified as Seq
 import GHC.Generics (Generic)
+import Legacy.Prettyprinter.Extras (PrettyShow (..), Tagged (..))
 import Plutus.Trace.Tag (Tag)
 import Prettyprinter
-import Prettyprinter.Extras (PrettyShow (..), Tagged (..))
 
 {- Note [Thread Tag]
 

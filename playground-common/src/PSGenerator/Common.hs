@@ -19,21 +19,21 @@ import Language.PureScript.Bridge.Builder (BridgeData)
 import Language.PureScript.Bridge.PSTypes (psInt, psNumber, psString)
 import Language.PureScript.Bridge.TypeParameters (A)
 import Ledger (Address, BlockId, CardanoTx, ChainIndexTxOut, DatumHash, MintingPolicy, OnChainTx, PaymentPubKey,
-               PaymentPubKeyHash, PubKey, PubKeyHash, RedeemerPtr, ScriptTag, Signature, StakePubKey, StakePubKeyHash,
-               StakeValidator, Tx, TxId, TxIn, TxInType, TxOut, TxOutRef, TxOutTx, UtxoIndex, ValidationPhase,
-               Validator)
-import Ledger.Ada (Ada)
+               PaymentPubKeyHash, PubKeyHash, RedeemerPtr, ScriptTag, StakePubKey, StakePubKeyHash, StakeValidator,
+               TxId, TxIn, TxInType, TxOut, TxOutRef, UtxoIndex, ValidationPhase, Validator)
 import Ledger.Constraints.OffChain (MkTxError, UnbalancedTx)
 import Ledger.Credential (Credential, StakingCredential)
 import Ledger.DCert (DCert)
 import Ledger.Index (ExCPU, ExMemory, ScriptType, ScriptValidationEvent, ValidationError)
 import Ledger.Interval (Extended, Interval, LowerBound, UpperBound)
 import Ledger.Scripts (ScriptError)
-import Ledger.Slot (Slot)
 import Ledger.TimeSlot (SlotConfig, SlotConversionError)
 import Ledger.Tx.CardanoAPI (FromCardanoError, ToCardanoError)
 import Ledger.Typed.Tx (ConnectionError, WrongOutTypeError)
 import Ledger.Value (AssetClass, CurrencySymbol, TokenName, Value)
+import Legacy.Plutus.V1.Ledger.Crypto (PubKey, Signature)
+import Legacy.Plutus.V1.Ledger.Slot (Slot)
+import Legacy.Plutus.V2.Ledger.Tx (Tx, TxOutTx)
 import Playground.Types (ContractCall, FunctionSchema, KnownCurrency)
 import Plutus.ChainIndex.Api (IsUtxoResponse, TxosResponse, UtxosResponse)
 import Plutus.ChainIndex.ChainIndexError (ChainIndexError)
@@ -307,7 +307,6 @@ servantBridge = headersBridge <|> headerBridge
 ledgerTypes :: [SumType 'Haskell]
 ledgerTypes =
     [ equal . genericShow . argonaut $ mkSumType @Slot
-    , equal . genericShow . argonaut $ mkSumType @Ada
     , equal . genericShow . argonaut $ mkSumType @SlotConfig
     , equal . genericShow . argonaut $ mkSumType @SlotConversionError
     , equal . genericShow . argonaut $ mkSumType @Tx

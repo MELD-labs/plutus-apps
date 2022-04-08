@@ -100,12 +100,12 @@ import Data.Text.IO qualified as Text
 import Data.Time.Units (Millisecond)
 import Ledger (Address, Blockchain, CardanoTx, PaymentPubKeyHash, TxId, TxOut (TxOut, txOutAddress, txOutValue),
                eitherTx, getCardanoTxFee, getCardanoTxId, txId)
-import Ledger.Ada qualified as Ada
 import Ledger.CardanoWallet (MockWallet)
 import Ledger.CardanoWallet qualified as CW
 import Ledger.Index qualified as UtxoIndex
 import Ledger.TimeSlot (SlotConfig (SlotConfig, scSlotLength))
-import Ledger.Value (Value, flattenValue)
+import Ledger.Value (Value, adaSymbol, adaToken, flattenValue, singleton)
+import Legacy.Plutus.V1.Ledger.Slot (Slot)
 import Plutus.ChainIndex.Emulator (ChainIndexControlEffect, ChainIndexEmulatorState, ChainIndexError, ChainIndexLog,
                                    ChainIndexQueryEffect (..), TxOutStatus, TxStatus, getTip)
 import Plutus.ChainIndex.Emulator qualified as ChainIndex
@@ -122,8 +122,7 @@ import Plutus.PAB.Monitoring.PABLogMsg (PABMultiAgentMsg (EmulatorMsg, UserLog, 
 import Plutus.PAB.Types (PABError (ContractInstanceNotFound, WalletError, WalletNotFound))
 import Plutus.PAB.Webserver.Types (ContractActivationArgs)
 import Plutus.Trace.Emulator.System (appendNewTipBlock)
-import Plutus.V1.Ledger.Slot (Slot)
-import Plutus.V1.Ledger.Tx (TxOutRef)
+import Plutus.V2.Ledger.Tx (TxOutRef)
 import Prettyprinter (Pretty (pretty), defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.Text qualified as Render
 import Wallet.API qualified as WAPI
@@ -175,7 +174,7 @@ makeLensesFor [("_logMessages", "logMessages"), ("_instances", "instances")] ''S
 
 initialState :: forall t. IO (SimulatorState t)
 initialState = do
-    let initialDistribution = Map.fromList $ fmap (, Ada.adaValueOf 100_000) knownWallets
+    let initialDistribution = Map.fromList $ fmap (, singleton adaSymbol adaToken 100_000) knownWallets
         Emulator.EmulatorState{Emulator._chainState} = Emulator.initialState (def & Emulator.initialChainState .~ Left initialDistribution)
         initialWallets = Map.fromList $ fmap (\w -> (Wallet.toMockWallet w, initialAgentState w)) CW.knownMockWallets
     STM.atomically $
@@ -738,7 +737,7 @@ addWallet = addWalletWith Nothing
 
 -- | Create a new wallet with a random key, give it provided funds
 --   and add it to the list of simulated wallets.
-addWalletWith :: forall t. Maybe Ada.Ada -> Simulation t (Wallet, PaymentPubKeyHash)
+addWalletWith :: forall t. Maybe Integer -> Simulation t (Wallet, PaymentPubKeyHash)
 addWalletWith funds = do
     SimulatorState{_agentStates} <- Core.askUserEnv @t @(SimulatorState t)
     mockWallet <- MockWallet.newWallet

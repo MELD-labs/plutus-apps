@@ -64,9 +64,10 @@ import Data.Time.Format.ISO8601 qualified as F
 import Data.Time.Units (Millisecond)
 import Data.Time.Units.Extra ()
 import GHC.Generics (Generic)
-import Ledger (Block, Tx, txId)
+import Ledger (Block, txId)
 import Ledger.CardanoWallet (WalletNumber)
 import Ledger.TimeSlot (SlotConfig)
+import Legacy.Plutus.V2.Ledger.Tx (Tx)
 import Plutus.Contract.Trace qualified as Trace
 import Prettyprinter (Pretty, pretty, viaShow, vsep, (<+>))
 import Servant.Client (BaseUrl (BaseUrl, baseUrlPort), Scheme (Http))

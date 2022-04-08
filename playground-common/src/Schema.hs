@@ -46,10 +46,11 @@ module Schema
 import Crypto.Hash (Digest, SHA256)
 import Data.Aeson (FromJSON, ToJSON, toJSON)
 import Data.Aeson qualified as JSON
+import Data.Aeson.Key qualified as JSON
+import Data.Aeson.KeyMap qualified as JSON
 import Data.Bifunctor (first)
 import Data.Eq.Deriving (deriveEq1)
 import Data.Functor.Foldable (Fix (Fix), cata)
-import Data.HashMap.Strict qualified as HashMap
 import Data.Map qualified
 import Data.Proxy (Proxy)
 import Data.Text (Text)
@@ -57,11 +58,12 @@ import Data.Text qualified as Text
 import Data.UUID (UUID)
 import GHC.Generics (C1, Constructor, D1, Generic, K1 (K1), M1 (M1), Rec0, Rep, S1, Selector, U1, conIsRecord, conName,
                      from, selName, (:*:) ((:*:)), (:+:) (L1, R1))
-import Ledger (Ada, AssetClass, CurrencySymbol, DatumHash, Interval, POSIXTime, POSIXTimeRange, PaymentPubKey,
-               PaymentPubKeyHash, PubKey, PubKeyHash, RedeemerHash, Signature, Slot, StakePubKey, StakePubKeyHash,
-               TokenName, TxId, TxOutRef, ValidatorHash, Value)
+import Ledger (AssetClass, CurrencySymbol, DatumHash, Interval, POSIXTime, POSIXTimeRange, PaymentPubKey,
+               PaymentPubKeyHash, PubKeyHash, RedeemerHash, Slot, StakePubKey, StakePubKeyHash, TokenName, TxId,
+               TxOutRef, ValidatorHash, Value)
 import Ledger.Bytes (LedgerBytes)
 import Ledger.CardanoWallet (WalletNumber)
+import Legacy.Plutus.V1.Ledger.Crypto (PubKey, Signature)
 import Plutus.Contract.Secrets (SecretArgument (EndpointSide, UserSide))
 import Plutus.Contract.StateMachine.ThreadToken (ThreadToken)
 import PlutusTx.AssocMap qualified
@@ -138,7 +140,7 @@ formArgumentToJson = cata algebra
     algebra (FormTupleF (Just a) (Just b)) = justJSON [a, b]
     algebra (FormTupleF _ _) = Nothing
     algebra (FormObjectF vs) =
-        JSON.Object . HashMap.fromList . map (first Text.pack) <$>
+        JSON.Object . JSON.fromList . map (first JSON.fromString) <$>
         traverse sequence vs
     algebra (FormValueF v) = justJSON v
     algebra (FormPOSIXTimeRangeF v) = justJSON v
@@ -386,8 +388,6 @@ instance ToSchema POSIXTime where
 instance ToSchema POSIXTimeRange where
     toSchema = FormSchemaPOSIXTimeRange
 
-deriving anyclass instance ToSchema Ada
-
 deriving anyclass instance ToSchema ContractInstanceId
 
 deriving anyclass instance ToSchema CurrencySymbol
@@ -426,8 +426,6 @@ deriving anyclass instance ToSchema WalletNumber
 
 instance ToSchema Wallet where
   toSchema = toSchema @WalletId
-
-deriving anyclass instance ToArgument Ada
 
 deriving anyclass instance ToArgument WalletNumber
 

@@ -30,6 +30,7 @@ import Auth.Types (Token, TokenProvider (Github))
 import Data.Aeson (FromJSON, GFromJSON, ToJSON, Value, Zero, genericParseJSON, object, parseJSON, toJSON, withObject,
                    (.!=), (.:), (.:?), (.=))
 import Data.Aeson.Casing (aesonPrefix, snakeCase)
+import Data.Aeson.Key (fromText)
 import Data.Aeson.Types (Parser)
 import Data.Bifunctor (bimap)
 import Data.Map (Map)
@@ -101,7 +102,7 @@ instance ToJSON NewGist where
             ]
       where
         toPair NewGistFile {..} =
-            (_newGistFilename, object ["content" .= _newGistFileContent])
+            (fromText _newGistFilename, object ["content" .= _newGistFileContent])
 
 data NewGistFile =
     NewGistFile

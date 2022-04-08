@@ -12,7 +12,7 @@ module Plutus.PAB.Effects.TimeEffect(
     ) where
 
 import Control.Monad.Freer.TH (makeEffect)
-import Ledger.Slot (Slot)
+import Legacy.Plutus.V1.Ledger.Slot (Slot)
 
 data TimeEffect r where
     SystemTime :: TimeEffect Slot

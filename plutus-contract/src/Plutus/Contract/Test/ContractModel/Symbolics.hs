@@ -2,7 +2,6 @@
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 module Plutus.Contract.Test.ContractModel.Symbolics where
 
-import Ledger.Ada qualified as Ada
 import Ledger.Value (AssetClass, Value, assetClassValue, assetClassValueOf, isZero, leq)
 import PlutusTx.Monoid qualified as PlutusTx
 
@@ -78,9 +77,6 @@ instance SymValueLike Value where
 
 instance SymValueLike SymValue where
   toSymValue = id
-
-instance SymValueLike Ada.Ada where
-  toSymValue = toSymValue . Ada.toValue
 
 instance TokenLike SymToken where
   symAssetClassValueOf (SymValue svm _) t = sum $ Map.lookup t svm

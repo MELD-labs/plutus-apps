@@ -79,14 +79,14 @@ import Ledger.Crypto (pubKeyHash)
 import Ledger.Orphans ()
 import Ledger.Scripts (Datum (Datum), DatumHash, MintingPolicy, MintingPolicyHash, Redeemer, Validator, ValidatorHash,
                        datumHash, mintingPolicyHash, validatorHash)
-import Ledger.Tx (ChainIndexTxOut, RedeemerPtr (RedeemerPtr), ScriptTag (Mint), Tx,
-                  TxOut (txOutAddress, txOutDatumHash, txOutValue), TxOutRef)
+import Ledger.Tx (ChainIndexTxOut, RedeemerPtr (RedeemerPtr), ScriptTag (Mint),
+                  TxOut (txOutAddress, txOutDatum, txOutReferenceScript, txOutValue), TxOutRef)
 import Ledger.Tx qualified as Tx
 import Ledger.Typed.Scripts (Any, TypedValidator, ValidatorTypes (DatumType, RedeemerType))
 import Ledger.Typed.Scripts qualified as Scripts
 import Ledger.Typed.Tx (ConnectionError)
 import Ledger.Typed.Tx qualified as Typed
-import Plutus.V1.Ledger.Ada qualified as Ada
+import Legacy.Plutus.V2.Ledger.Tx (Tx, datumWitnesses, inputs, mint, mintScripts, outputs, redeemers, txMintScripts)
 import Plutus.V1.Ledger.Time (POSIXTimeRange)
 import Plutus.V1.Ledger.Value (Value)
 import Plutus.V1.Ledger.Value qualified as Value
@@ -395,12 +395,12 @@ mkTx lookups txc = mkSomeTx [SomeLookupsAndConstraints lookups txc]
 --
 -- TODO: In the future, the minimum Ada value should be configurable.
 adjustUnbalancedTx :: UnbalancedTx -> UnbalancedTx
-adjustUnbalancedTx = over (tx . Tx.outputs . traverse) adjustTxOut
+adjustUnbalancedTx = over (tx . outputs . traverse) adjustTxOut
   where
     adjustTxOut :: TxOut -> TxOut
     adjustTxOut txOut =
-      let missingLovelace = max 0 (Ledger.minAdaTxOut - Ada.fromValue (txOutValue txOut))
-       in txOut { txOutValue = txOutValue txOut <> Ada.toValue missingLovelace }
+      let missingLovelace = max 0 (Ledger.minAdaTxOut - Value.valueOf (txOutValue txOut) Value.adaSymbol Value.adaToken)
+       in txOut { txOutValue = txOutValue txOut <> Value.singleton Value.adaSymbol Value.adaToken missingLovelace }
 
 -- | Add the remaining balance of the total value that the tx must spend.
 --   See note [Balance of value spent]
@@ -422,9 +422,10 @@ addMissingValueSpent = do
             -- Step 4 of the process described in [Balance of value spent]
             pkh <- asks slOwnPaymentPubKeyHash >>= maybe (throwError OwnPubKeyMissing) pure
             skh <- asks slOwnStakePubKeyHash
-            unbalancedTx . tx . Tx.outputs %= (Tx.TxOut { txOutAddress=pubKeyHashAddress pkh skh
+            unbalancedTx . tx . outputs %= (Tx.TxOut { txOutAddress=pubKeyHashAddress pkh skh
                                                         , txOutValue=missing
-                                                        , txOutDatumHash=Nothing
+                                                        , txOutDatum=Ledger.NoOutputDatum
+                                                        , txOutReferenceScript=Nothing
                                                         } :)
 
 addMintingRedeemers
@@ -435,11 +436,11 @@ addMintingRedeemers
 addMintingRedeemers = do
     reds <- use mintRedeemers
     txSoFar <- use (unbalancedTx . tx)
-    let mpss = mintingPolicyHash <$> Set.toList (Tx.txMintScripts txSoFar)
+    let mpss = mintingPolicyHash <$> Set.toList (txMintScripts txSoFar)
     iforM_ reds $ \mpsHash red -> do
         let err = throwError (MintingPolicyNotFound mpsHash)
         ptr <- maybe err (pure . RedeemerPtr Mint . fromIntegral) $ elemIndex mpsHash mpss
-        unbalancedTx . tx . Tx.redeemers . at ptr .= Just red
+        unbalancedTx . tx . redeemers . at ptr .= Just red
 
 updateUtxoIndex
     :: ( MonadReader (ScriptLookups a) m
@@ -471,7 +472,7 @@ addOwnInput ScriptInputConstraint{icRedeemer, icTxOutRef} = do
         $ Typed.typeScriptTxOutRef (`Map.lookup` slTxOutputs) inst icTxOutRef
     let txIn = Typed.makeTypedScriptTxIn inst icRedeemer typedOutRef
         vl   = Tx.txOutValue $ Typed.tyTxOutTxOut $ Typed.tyTxOutRefOut typedOutRef
-    unbalancedTx . tx . Tx.inputs %= Set.insert (Typed.tyTxInTxIn txIn)
+    unbalancedTx . tx . inputs %= Set.insert (Typed.tyTxInTxIn txIn)
     valueSpentInputs <>= provided vl
 
 -- | Add a typed output and return its value.
@@ -489,8 +490,8 @@ addOwnOutput ScriptOutputConstraint{ocDatum, ocValue} = do
     inst <- maybe (throwError TypedValidatorMissing) pure slTypedValidator
     let txOut = Typed.makeTypedScriptTxOut inst ocDatum ocValue
         dsV   = Datum (toBuiltinData ocDatum)
-    unbalancedTx . tx . Tx.outputs %= (Typed.tyTxOutTxOut txOut :)
-    unbalancedTx . tx . Tx.datumWitnesses . at (datumHash dsV) .= Just dsV
+    unbalancedTx . tx . outputs %= (Typed.tyTxOutTxOut txOut :)
+    unbalancedTx . tx . datumWitnesses . at (datumHash dsV) .= Just dsV
     valueSpentOutputs <>= provided ocValue
 
 data MkTxError =
@@ -584,7 +585,7 @@ processConstraint
 processConstraint = \case
     MustIncludeDatum dv ->
         let theHash = datumHash dv in
-        unbalancedTx . tx . Tx.datumWitnesses . at theHash .= Just dv
+        unbalancedTx . tx . datumWitnesses . at theHash .= Just dv
     MustValidateIn timeRange ->
         unbalancedTx . validityTimeRange %= (timeRange /\)
     MustBeSignedBy pk -> do
@@ -597,7 +598,7 @@ processConstraint = \case
         case txout of
           Tx.PublicKeyChainIndexTxOut { Tx._ciTxOutValue } -> do
               -- TODO: Add the optional datum in the witness set for the pub key output
-              unbalancedTx . tx . Tx.inputs %= Set.insert (Tx.pubKeyTxIn txo)
+              unbalancedTx . tx . inputs %= Set.insert (Tx.pubKeyTxIn txo)
               valueSpentInputs <>= provided _ciTxOutValue
           _ -> throwError (TxOutRefWrongType txo)
     MustSpendScriptOutput txo red -> do
@@ -617,8 +618,8 @@ processConstraint = \case
             --       probably get rid of the 'slOtherData' map and of
             --       'lookupDatum'
             let input = Tx.scriptTxIn txo validator red dataValue
-            unbalancedTx . tx . Tx.inputs %= Set.insert input
-            unbalancedTx . tx . Tx.datumWitnesses . at dvh .= Just dataValue
+            unbalancedTx . tx . inputs %= Set.insert input
+            unbalancedTx . tx . datumWitnesses . at dvh .= Just dataValue
             valueSpentInputs <>= provided _ciTxOutValue
           _ -> throwError (TxOutRefWrongType txo)
 
@@ -633,29 +634,30 @@ processConstraint = \case
             then valueSpentInputs <>= provided (value (negate i))
             else valueSpentOutputs <>= provided (value i)
 
-        unbalancedTx . tx . Tx.mintScripts %= Set.insert mintingPolicyScript
-        unbalancedTx . tx . Tx.mint <>= value i
+        unbalancedTx . tx . mintScripts %= Set.insert mintingPolicyScript
+        unbalancedTx . tx . mint <>= value i
         mintRedeemers . at mpsHash .= Just red
     MustPayToPubKeyAddress pk skhM mdv vl -> do
         -- if datum is presented, add it to 'datumWitnesses'
         forM_ mdv $ \dv -> do
-            unbalancedTx . tx . Tx.datumWitnesses . at (datumHash dv) .= Just dv
-        let hash = datumHash <$> mdv
-        unbalancedTx . tx . Tx.outputs %= (Tx.TxOut{ txOutAddress=pubKeyHashAddress pk skhM
+            unbalancedTx . tx . datumWitnesses . at (datumHash dv) .= Just dv
+        let hash = mdv
+        unbalancedTx . tx . outputs %= (Tx.TxOut{ txOutAddress=pubKeyHashAddress pk skhM
                                                    , txOutValue=vl
-                                                   , txOutDatumHash=hash
+                                                   , txOutDatum=maybe Ledger.NoOutputDatum Ledger.OutputDatum hash
+                                                   , txOutReferenceScript=Nothing
                                                    } :)
         valueSpentOutputs <>= provided vl
     MustPayToOtherScript vlh dv vl -> do
         let addr = Address.scriptHashAddress vlh
             theHash = datumHash dv
-        unbalancedTx . tx . Tx.datumWitnesses . at theHash .= Just dv
-        unbalancedTx . tx . Tx.outputs %= (Tx.scriptTxOut' vl addr dv :)
+        unbalancedTx . tx . datumWitnesses . at theHash .= Just dv
+        unbalancedTx . tx . outputs %= (Tx.scriptTxOut' vl addr dv :)
         valueSpentOutputs <>= provided vl
     MustHashDatum dvh dv -> do
         unless (datumHash dv == dvh)
             (throwError $ DatumWrongHash dvh dv)
-        unbalancedTx . tx . Tx.datumWitnesses . at dvh .= Just dv
+        unbalancedTx . tx . datumWitnesses . at dvh .= Just dv
     MustSatisfyAnyOf xs -> do
         s <- get
         let tryNext [] =

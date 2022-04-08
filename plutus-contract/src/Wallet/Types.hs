@@ -33,7 +33,7 @@ import GHC.Generics (Generic)
 import Language.Haskell.TH.Syntax qualified as TH
 import Prettyprinter (Pretty (..), colon, hang, viaShow, vsep, (<+>))
 
-import Prettyprinter.Extras (PrettyShow (..), Tagged (..))
+import Legacy.Prettyprinter.Extras (PrettyShow (..), Tagged (..))
 
 import Data.OpenApi.Schema qualified as OpenApi
 

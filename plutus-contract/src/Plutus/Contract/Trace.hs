@@ -64,8 +64,7 @@ import Plutus.Contract.Effects qualified as E
 import Plutus.Contract.Trace.RequestHandler (RequestHandler, RequestHandlerLogMsg, generalise)
 import Plutus.Contract.Trace.RequestHandler qualified as RequestHandler
 
-import Ledger.Ada qualified as Ada
-import Ledger.Value (Value)
+import Ledger.Value (Value, adaSymbol, adaToken, singleton)
 
 import Plutus.ChainIndex (ChainIndexQueryEffect)
 import Wallet.Effects (NodeClientEffect, WalletEffect)
@@ -205,7 +204,7 @@ defaultDist :: InitialDistribution
 defaultDist = defaultDistFor EM.knownWallets
 
 defaultDistFor :: [EM.Wallet] -> InitialDistribution
-defaultDistFor wallets = Map.fromList $ zip wallets (repeat (Ada.lovelaceValueOf 100_000_000))
+defaultDistFor wallets = Map.fromList $ zip wallets (repeat (singleton adaSymbol adaToken 100_000_000))
 
 makeClassyPrisms ''TraceError
 

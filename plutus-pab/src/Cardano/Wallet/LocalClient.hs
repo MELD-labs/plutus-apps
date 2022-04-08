@@ -40,14 +40,14 @@ import Data.Text (pack)
 import Data.Text.Class (fromText)
 import Ledger (CardanoTx (..))
 import Ledger qualified
-import Ledger.Ada qualified as Ada
 import Ledger.Constraints.OffChain (UnbalancedTx)
 import Ledger.Tx.CardanoAPI (SomeCardanoApiTx (SomeTx), ToCardanoError, toCardanoTxBody)
-import Ledger.Value (CurrencySymbol (CurrencySymbol), TokenName (TokenName), Value (Value))
+import Ledger.Value (CurrencySymbol (CurrencySymbol), TokenName (TokenName), Value (Value), adaSymbol, adaToken,
+                     singleton)
 import Plutus.Contract.Wallet (export)
 import Plutus.PAB.Monitoring.PABLogMsg (WalletClientMsg (BalanceTxError, WalletClientError))
 import PlutusTx.AssocMap qualified as Map
-import PlutusTx.Builtins.Internal (BuiltinByteString (BuiltinByteString))
+import PlutusTx.Builtins.Internal (BuiltinByteString (..))
 import Prettyprinter (Pretty (pretty))
 import Servant ((:<|>) ((:<|>)), (:>))
 import Servant.Client (ClientEnv, ClientError, ClientM, client, runClientM)
@@ -138,7 +138,7 @@ handleWalletClient config (Wallet _ (WalletId walletId)) event = do
             C.ApiWallet{balance, assets} <- runClient $ C.getWallet C.walletClient (C.ApiT walletId)
             let C.ApiWalletBalance (Quantity avAda) _ _ = balance
                 C.ApiWalletAssetsBalance (C.ApiT avAssets) _ = assets
-            pure $ Ada.lovelaceValueOf (fromIntegral avAda) <> tokenMapToValue avAssets
+            pure $ singleton adaSymbol adaToken (fromIntegral avAda) <> tokenMapToValue avAssets
 
         yieldUnbalancedTxH :: UnbalancedTx -> Eff effs ()
         yieldUnbalancedTxH utx = do
@@ -156,7 +156,7 @@ handleWalletClient config (Wallet _ (WalletId walletId)) event = do
         YieldUnbalancedTx utx -> yieldUnbalancedTxH utx
 
 tokenMapToValue :: C.TokenMap -> Value
-tokenMapToValue = Value . Map.fromList . fmap (bimap coerce (Map.fromList . fmap (bimap coerce (fromIntegral . C.unTokenQuantity)) . toList)) . C.toNestedList
+tokenMapToValue = Value . Map.fromList . fmap (bimap (coerce . BuiltinByteString . coerce) (Map.fromList . fmap (bimap (coerce . BuiltinByteString . coerce) (fromIntegral . C.unTokenQuantity)) . toList)) . C.toNestedList
 
 fromApiSerialisedTransaction :: C.ApiSerialisedTransaction -> CardanoTx
 fromApiSerialisedTransaction (C.ApiSerialisedTransaction (C.ApiT sealedTx)) = CardanoApiTx $ case C.cardanoTx sealedTx of

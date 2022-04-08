@@ -35,6 +35,8 @@ import Cardano.Ledger.Keys qualified as Shelley
 import Cardano.Ledger.Shelley.Tx qualified as Shelley
 import Cardano.Ledger.Shelley.TxBody qualified as Shelley
 
+import Cardano.Ledger.Alonzo.PParams ( PParams'(_costmdls) )
+
 makeTransactionBody'
     :: Map.Map Alonzo.RdmrPtr Alonzo.ExUnits
     -> TxBodyContent BuildTx AlonzoEra

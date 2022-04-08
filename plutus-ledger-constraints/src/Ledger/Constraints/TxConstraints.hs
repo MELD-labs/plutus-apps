@@ -29,12 +29,13 @@ import PlutusTx.Prelude (Bool (False, True), Foldable (foldMap), Functor (fmap),
                          not, null, ($), (.), (==), (>>=), (||))
 
 import Ledger.Address (PaymentPubKeyHash, StakePubKeyHash)
+import Legacy.Plutus.V1.Ledger.Time ()
 import Plutus.V1.Ledger.Interval qualified as I
 import Plutus.V1.Ledger.Scripts (Datum (Datum), DatumHash, MintingPolicyHash, Redeemer, ValidatorHash, unitRedeemer)
 import Plutus.V1.Ledger.Time (POSIXTimeRange)
-import Plutus.V1.Ledger.Tx (TxOutRef)
 import Plutus.V1.Ledger.Value (TokenName, Value, isZero)
 import Plutus.V1.Ledger.Value qualified as Value
+import Plutus.V2.Ledger.Tx (TxOutRef)
 
 import Prelude qualified as Haskell
 

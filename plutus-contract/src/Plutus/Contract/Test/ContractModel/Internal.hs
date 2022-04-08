@@ -193,10 +193,9 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text qualified as Text
 
-import Ledger.Ada qualified as Ada
 import Ledger.Index
-import Ledger.Slot
-import Ledger.Value (AssetClass)
+import Ledger.Value (AssetClass, adaSymbol, adaToken, singleton)
+import Legacy.Plutus.V1.Ledger.Slot
 import Plutus.Contract (Contract, ContractError, ContractInstanceId, Endpoint, endpoint)
 import Plutus.Contract.Schema (Input)
 import Plutus.Contract.Test
@@ -1470,7 +1469,7 @@ propRunActions_ actions =
 -- to write `ContractModel`s that keep track of balances.
 defaultCheckOptionsContractModel :: CheckOptions
 defaultCheckOptionsContractModel =
-  defaultCheckOptions & emulatorConfig . initialChainState .~ (Left . Map.fromList $ zip knownWallets (repeat (Ada.lovelaceValueOf 100_000_000_000_000_000)))
+  defaultCheckOptions & emulatorConfig . initialChainState .~ (Left . Map.fromList $ zip knownWallets (repeat (singleton adaSymbol adaToken 100_000_000_000_000_000)))
 
 -- | Run a `Actions` in the emulator and check that the model and the emulator agree on the final
 --   wallet balance changes, and that the given `TracePredicate` holds at the end. Equivalent to:

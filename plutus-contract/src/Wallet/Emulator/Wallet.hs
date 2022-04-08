@@ -37,7 +37,7 @@ import Data.Data
 import Data.Default (Default (def))
 import Data.Foldable (Foldable (fold), find, foldl')
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isNothing, listToMaybe)
+import Data.Maybe (catMaybes, fromMaybe, listToMaybe)
 import Data.OpenApi.Schema qualified as OpenApi
 import Data.Set qualified as Set
 import Data.String (IsString (fromString))
@@ -48,9 +48,8 @@ import Ledger (Address (addressCredential), CardanoTx, ChainIndexTxOut,
                PaymentPrivateKey (PaymentPrivateKey, unPaymentPrivateKey),
                PaymentPubKey (PaymentPubKey, unPaymentPubKey),
                PaymentPubKeyHash (PaymentPubKeyHash, unPaymentPubKeyHash), PrivateKey, PubKeyHash, SomeCardanoApiTx,
-               StakePubKey, Tx (txFee, txMint), TxIn (TxIn, txInRef), TxOutRef, UtxoIndex (..), ValidatorHash, Value)
+               StakePubKey, TxIn (TxIn, txInRef), TxOutRef, UtxoIndex (..), ValidatorHash, Value)
 import Ledger qualified
-import Ledger.Ada qualified as Ada
 import Ledger.CardanoWallet (MockWallet, WalletNumber)
 import Ledger.CardanoWallet qualified as CW
 import Ledger.Constraints.OffChain (UnbalancedTx (UnbalancedTx, unBalancedTxTx))
@@ -59,6 +58,8 @@ import Ledger.Credential (Credential (PubKeyCredential, ScriptCredential))
 import Ledger.Tx qualified as Tx
 import Ledger.Validation (addSignature, evaluateTransactionFee, fromPlutusIndex, fromPlutusTx, getRequiredSigners)
 import Ledger.Value qualified as Value
+import Legacy.Plutus.V2.Ledger.Tx (Tx (txFee, txMint))
+import Legacy.Plutus.V2.Ledger.Tx qualified as Tx
 import Plutus.ChainIndex (PageQuery)
 import Plutus.ChainIndex qualified as ChainIndex
 import Plutus.ChainIndex.Api (UtxosResponse (page))
@@ -312,7 +313,7 @@ handleBalance utx' = do
     cUtxoIndex <- handleError (view U.tx utx) $ fromPlutusIndex $ UtxoIndex $ U.unBalancedTxUtxoIndex utx <> fmap Tx.toTxOut utxo
     -- Find the fixed point of fee calculation, trying maximally n times to prevent an infinite loop
     let calcFee n fee = do
-            tx <- handleBalanceTx utxo (utx & U.tx . Ledger.fee .~ fee)
+            tx <- handleBalanceTx utxo (utx & U.tx . Tx.fee .~ fee)
             newFee <- handleError tx $ evaluateTransactionFee cUtxoIndex requiredSigners tx
             if newFee /= fee
                 then if n == (0 :: Int)
@@ -321,8 +322,8 @@ handleBalance utx' = do
                     else calcFee (n - 1) newFee
                 else pure newFee
     -- Start with a relatively high fee, bigger chance that we get the number of inputs right the first time.
-    theFee <- calcFee 5 $ Ada.lovelaceValueOf 300000
-    tx' <- handleBalanceTx utxo (utx & U.tx . Ledger.fee .~ theFee)
+    theFee <- calcFee 5 $ Value.singleton Value.adaSymbol Value.adaToken 300000
+    tx' <- handleBalanceTx utxo (utx & U.tx . Tx.fee .~ theFee)
     cTx <- handleError tx' $ fromPlutusTx cUtxoIndex requiredSigners tx'
     pure $ Tx.Both tx' (Tx.SomeTx cTx AlonzoEraInCardanoMode)
     where
@@ -466,18 +467,18 @@ adjustBalanceWithMissingLovelace (neg, pos) = do
     let missingLovelaceFromPosValue =
           if valueIsZeroOrHasMinAda pos
             then 0
-            else max 0 (Ledger.minAdaTxOut - Ada.fromValue pos)
+            else max 0 (Ledger.minAdaTxOut - Value.valueOf pos Value.adaSymbol Value.adaToken)
         -- We calculate the final negative and positive balances
-        newPos = pos <> Ada.toValue missingLovelaceFromPosValue
-        newNeg = neg <> Ada.toValue missingLovelaceFromPosValue
+        newPos = pos <> Value.singleton Value.adaSymbol Value.adaToken missingLovelaceFromPosValue
+        newNeg = neg <> Value.singleton Value.adaSymbol Value.adaToken missingLovelaceFromPosValue
 
     (newNeg, newPos)
 
 -- | Split value into an ada-only and an non-ada-only value, making sure each has at least minAdaTxOut.
 splitOffAdaOnlyValue :: Value -> [Value]
-splitOffAdaOnlyValue vl = if Value.isAdaOnlyValue vl || ada < Ledger.minAdaTxOut then [vl] else [Ada.toValue ada, vl <> Ada.toValue (-ada)]
+splitOffAdaOnlyValue vl = if Value.isAdaOnlyValue vl || ada < Ledger.minAdaTxOut then [vl] else [Value.singleton Value.adaSymbol Value.adaToken ada, vl <> Value.singleton Value.adaSymbol Value.adaToken (-ada)]
     where
-        ada = Ada.fromValue vl - Ledger.minAdaTxOut
+        ada = Value.valueOf vl Value.adaSymbol Value.adaToken - Ledger.minAdaTxOut
 
 addOutput :: PaymentPubKey -> Maybe StakePubKey -> Value -> Tx -> Tx
 addOutput pk sk vl tx = tx & over Tx.outputs (pkos ++) where
@@ -565,13 +566,13 @@ selectCoin fnds vl =
 
 -- | Check that a value is a proper TxOut value or is zero (i.e. the absence of a TxOut)
 valueIsZeroOrHasMinAda :: Value -> Bool
-valueIsZeroOrHasMinAda v = Value.isZero v || Ada.fromValue v >= Ledger.minAdaTxOut
+valueIsZeroOrHasMinAda v = Value.isZero v || Value.valueOf v Value.adaSymbol Value.adaToken >= Ledger.minAdaTxOut
 
 -- | Removes transaction outputs with empty datum and empty value.
 removeEmptyOutputs :: Tx -> Tx
 removeEmptyOutputs tx = tx & over Tx.outputs (filter (not . isEmpty')) where
-    isEmpty' Tx.TxOut{Tx.txOutValue, Tx.txOutDatumHash} =
-        null (Value.flattenValue txOutValue) && isNothing txOutDatumHash
+    isEmpty' Tx.TxOut{Tx.txOutValue, Tx.txOutDatum} =
+        null (Value.flattenValue txOutValue) && (txOutDatum == Tx.NoOutputDatum)
 
 -- | Take elements from a list until the predicate is satisfied.
 -- 'takeUntil' @p@ includes the first element for wich @p@ is true

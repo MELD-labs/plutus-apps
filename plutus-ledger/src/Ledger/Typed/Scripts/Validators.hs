@@ -36,10 +36,12 @@ import PlutusTx.Prelude (check)
 
 import Ledger.Scripts qualified as Scripts
 import Plutus.V1.Ledger.Address (Address (..), scriptHashAddress)
-import Plutus.V1.Ledger.Contexts qualified as Validation
+import Plutus.V2.Ledger.Contexts qualified as Validation
 
 import Ledger.Typed.Scripts.MonetaryPolicies qualified as MPS
 import Ledger.Typed.TypeUtils (Any)
+
+import Legacy.Plutus.V1.Ledger.Scripts ()
 
 -- | A class that associates a type standing for a connection type with two types, the type of the redeemer
 -- and the data script for that connection type.

@@ -43,7 +43,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Ledger (PubKeyHash)
-import Ledger.Slot (Slot)
+import Legacy.Plutus.V1.Ledger.Slot (Slot)
 import Network.WebSockets qualified as WS
 import Network.WebSockets.Connection (Connection, PendingConnection)
 import Plutus.Contract.Effects (ActiveEndpoint)

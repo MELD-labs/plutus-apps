@@ -215,14 +215,20 @@ instance HasDbType ByteString where
     toDbValue = id
     fromDbValue = id
 
-deriving via ByteString instance HasDbType DatumHash
-deriving via ByteString instance HasDbType ValidatorHash
-deriving via ByteString instance HasDbType MintingPolicyHash
-deriving via ByteString instance HasDbType RedeemerHash
-deriving via ByteString instance HasDbType StakeValidatorHash
-deriving via ByteString instance HasDbType TxId
+instance HasDbType BuiltinByteString where
+    type DbType BuiltinByteString = ByteString
+    toDbValue (BuiltinByteString bs) = bs
+    fromDbValue = BuiltinByteString
+
+deriving via BuiltinByteString instance HasDbType DatumHash
+deriving via BuiltinByteString instance HasDbType ValidatorHash
+deriving via BuiltinByteString instance HasDbType MintingPolicyHash
+deriving via BuiltinByteString instance HasDbType RedeemerHash
+deriving via BuiltinByteString instance HasDbType StakeValidatorHash
+deriving via BuiltinByteString instance HasDbType TxId
+deriving via BuiltinByteString instance HasDbType ScriptHash
+
 deriving via ByteString instance HasDbType BlockId
-deriving via ByteString instance HasDbType ScriptHash
 
 newtype Serialisable a = Serialisable { getSerialisable :: a }
 instance Serialise a => HasDbType (Serialisable a) where

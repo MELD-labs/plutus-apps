@@ -72,11 +72,10 @@ import Gen.Cardano.Api.Typed qualified as Gen
 import Hedgehog
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
-import Ledger (Ada, CurrencySymbol, Interval, MintingPolicy, OnChainTx (Valid), POSIXTime (POSIXTime, getPOSIXTime),
+import Ledger (CurrencySymbol, Interval, MintingPolicy, OnChainTx (Valid), POSIXTime (POSIXTime, getPOSIXTime),
                POSIXTimeRange, Passphrase (Passphrase), PaymentPrivateKey (unPaymentPrivateKey),
                PaymentPubKey (PaymentPubKey), RedeemerPtr (RedeemerPtr), ScriptContext (ScriptContext),
-               ScriptTag (Mint), Slot (Slot), SlotRange, SomeCardanoApiTx (SomeTx), TokenName,
-               Tx (txFee, txInputs, txMint, txMintScripts, txOutputs, txRedeemers, txValidRange), TxIn,
+               ScriptTag (Mint), Slot (Slot), SlotRange, SomeCardanoApiTx (SomeTx), TokenName, TxIn,
                TxInInfo (txInInfoOutRef), TxInfo (TxInfo), TxOut (txOutValue), TxOutRef (TxOutRef),
                UtxoIndex (UtxoIndex), ValidationCtx (ValidationCtx), Value, _runValidation, addSignature',
                mkMintingPolicyScript, pubKeyTxIn, pubKeyTxOut, scriptCurrencySymbol, toPublicKey, txId)
@@ -87,10 +86,10 @@ import Ledger.Index qualified as Index
 import Ledger.TimeSlot (SlotConfig)
 import Ledger.TimeSlot qualified as TimeSlot
 import Ledger.Value qualified as Value
-import Plutus.V1.Ledger.Ada qualified as Ada
-import Plutus.V1.Ledger.Contexts qualified as Contexts
+import Legacy.Plutus.V2.Ledger.Tx (Tx (..))
 import Plutus.V1.Ledger.Interval qualified as Interval
 import Plutus.V1.Ledger.Scripts qualified as Script
+import Plutus.V2.Ledger.Contexts qualified as Contexts
 import PlutusTx qualified
 
 -- | Attach signatures of all known private keys to a transaction.
@@ -109,7 +108,7 @@ data GeneratorModel = GeneratorModel {
 -- | A generator model with some sensible defaults.
 generatorModel :: GeneratorModel
 generatorModel =
-    let vl = Ada.lovelaceValueOf 100_000_000
+    let vl = Value.singleton Value.adaSymbol Value.adaToken 100_000_000
         pubKeys = knownPaymentPublicKeys
 
     in
@@ -219,7 +218,7 @@ genValidTransactionSpending' g feeCfg ins totalVal = do
                        else Just $ someTokenValue mintTokenName mintAmount
         fee' = calcFees feeCfg 0
         numOut = Set.size (gmPubKeys g) - 1
-        totalValAda = Ada.fromValue totalVal
+        totalValAda = Value.valueOf totalVal Value.adaSymbol Value.adaToken
         totalValTokens = if Value.isZero (Value.noAdaValue totalVal) then Nothing else Just (Value.noAdaValue totalVal)
     if fee' < totalValAda
         then do
@@ -227,21 +226,21 @@ genValidTransactionSpending' g feeCfg ins totalVal = do
             splitOutVals <- splitVal numOut (totalValAda - fee')
             let outVals = case totalValTokens <> mintValue of
                   Nothing -> do
-                    fmap Ada.toValue splitOutVals
+                    fmap (Value.singleton Value.adaSymbol Value.adaToken) splitOutVals
                   Just mv -> do
                     -- If there is a minted value, we look for a value in the
                     -- splitted values which can be associated with it.
                     let outValForMint =
-                          maybe mempty id $ List.find (\v -> v >= Ledger.minAdaTxOut)
+                          maybe 0 id $ List.find (\v -> v >= Ledger.minAdaTxOut)
                                           $ List.sort splitOutVals
-                    Ada.toValue outValForMint <> mv : fmap Ada.toValue (List.delete outValForMint splitOutVals)
+                    Value.singleton Value.adaSymbol Value.adaToken outValForMint <> mv : fmap (Value.singleton Value.adaSymbol Value.adaToken) (List.delete outValForMint splitOutVals)
             let tx = mempty
                         { txInputs = ins
                         , txOutputs = fmap (\f -> f Nothing) $ uncurry pubKeyTxOut <$> zip outVals (Set.toList $ gmPubKeys g)
                         , txMint = maybe mempty id mintValue
                         , txMintScripts = Set.singleton alwaysSucceedPolicy
                         , txRedeemers = Map.singleton (RedeemerPtr Mint 0) Script.unitRedeemer
-                        , txFee = Ada.toValue fee'
+                        , txFee = Value.singleton Value.adaSymbol Value.adaToken fee'
                         }
 
                 -- sign the transaction with all known wallets
@@ -327,8 +326,8 @@ genAlonzoEraInCardanoModeTx = do
   tx <- fromGenT $ Gen.genTx C.AlonzoEra
   pure $ SomeTx tx C.AlonzoEraInCardanoMode
 
-genAda :: MonadGen m => m Ada
-genAda = Ada.lovelaceOf <$> Gen.integral (Range.linear 0 (100000 :: Integer))
+genAda :: MonadGen m => m Integer
+genAda = Gen.integral (Range.linear 0 (100000 :: Integer))
 
 -- | Generate a 'ByteString s' of up to @s@ bytes.
 genSizedByteString :: forall m. MonadGen m => Int -> m BS.ByteString
@@ -346,7 +345,7 @@ genSizedByteStringExact s =
 genTokenName :: MonadGen m => m TokenName
 genTokenName = Gen.choice
     [ Value.tokenName <$> genSizedByteString 32
-    , pure Ada.adaToken
+    , pure Value.adaToken
     ]
 
 -- | A currency symbol is either a validator hash (bytestring of length 32)
@@ -354,7 +353,7 @@ genTokenName = Gen.choice
 genCurrencySymbol :: MonadGen m => m CurrencySymbol
 genCurrencySymbol = Gen.choice
     [ Value.currencySymbol <$> genSizedByteStringExact 32
-    , pure Ada.adaSymbol
+    , pure Value.adaSymbol
     ]
 
 genValue' :: MonadGen m => Range Integer -> m Value
@@ -411,7 +410,7 @@ splitVal mx init' = go 0 0 [] where
             if v + c == init'
             then pure $ v : l
             else go (succ i) (v + c) (v : l)
-    minAda = fromIntegral $ Ada.getLovelace $ Ledger.minAdaTxOut + Ledger.maxFee
+    minAda = fromIntegral $ Ledger.minAdaTxOut + Ledger.maxFee
 
 genTxInfo :: MonadGen m => Mockchain -> m TxInfo
 genTxInfo chain = do

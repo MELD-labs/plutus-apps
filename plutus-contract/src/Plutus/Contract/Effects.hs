@@ -90,10 +90,10 @@ import Ledger (Address, AssetClass, Datum, DatumHash, MintingPolicy, MintingPoli
 import Ledger.Constraints.OffChain (UnbalancedTx)
 import Ledger.Credential (Credential)
 import Ledger.Scripts (Validator)
-import Ledger.Slot (Slot, SlotRange)
 import Ledger.Time (POSIXTime, POSIXTimeRange)
 import Ledger.TimeSlot (SlotConversionError)
 import Ledger.Tx (CardanoTx, ChainIndexTxOut, getCardanoTxId, onCardanoTx)
+import Legacy.Plutus.V1.Ledger.Slot (Slot, SlotRange)
 import Plutus.ChainIndex (Page (pageItems), PageQuery)
 import Plutus.ChainIndex.Api (IsUtxoResponse (IsUtxoResponse), TxosResponse (TxosResponse),
                               UtxosResponse (UtxosResponse))

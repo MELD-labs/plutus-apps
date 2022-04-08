@@ -27,11 +27,11 @@ import Data.Bifunctor (Bifunctor (..))
 import Data.Foldable (toList)
 import GHC.Generics (Generic)
 
+import Legacy.Prettyprinter.Extras (Pretty, PrettyShow (..))
 import Plutus.Contract.Checkpoint (CheckpointKey, CheckpointStore)
 import Plutus.Contract.Effects (PABReq, PABResp)
 import Plutus.Contract.Resumable
 import Plutus.Contract.Types hiding (lastLogs, lastState, logs, observableState)
-import Prettyprinter.Extras (Pretty, PrettyShow (..))
 
 -- $contractstate
 -- Types for initialising and running instances of 'Contract's. The types and

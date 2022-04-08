@@ -17,7 +17,7 @@ import Control.Monad.Freer.Error (runError)
 import Control.Monad.Freer.State qualified as Eff
 import Control.Monad.IO.Class (MonadIO (..))
 import Ledger.Blockchain (Block)
-import Ledger.Slot (Slot)
+import Legacy.Plutus.V1.Ledger.Slot (Slot)
 
 import Cardano.ChainIndex.Types
 import Plutus.ChainIndex.Emulator (ChainIndexEmulatorState, ChainIndexLog)

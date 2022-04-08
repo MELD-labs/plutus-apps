@@ -28,7 +28,7 @@ import Ledger.TimeSlot (SlotConfig)
 
 import Cardano.ChainIndex.Types
 import Cardano.Protocol.Socket.Mock.Client (runChainSync)
-import Ledger.Slot (Slot (..))
+import Legacy.Plutus.V1.Ledger.Slot (Slot (..))
 import Plutus.ChainIndex.Emulator (ChainIndexEmulatorState, serveChainIndexQueryServer)
 
 -- $chainIndex

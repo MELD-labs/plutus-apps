@@ -6,7 +6,7 @@ module Ledger.Contexts
 
 import Ledger.Crypto (pubKeyHash)
 import Ledger.Scripts (MintingPolicy, MintingPolicyHash (..), mintingPolicyHash)
-import Plutus.V1.Ledger.Contexts as Export
+import Plutus.V2.Ledger.Contexts as Export
 import Plutus.V1.Ledger.Value (CurrencySymbol (..))
 import Plutus.V1.Ledger.Value qualified as Value
 

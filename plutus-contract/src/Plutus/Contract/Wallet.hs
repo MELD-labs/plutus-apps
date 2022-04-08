@@ -35,7 +35,6 @@ import Control.Monad.Error.Lens (throwing)
 import Control.Monad.Freer (Eff, Member)
 import Control.Monad.Freer.Error (Error, throwError)
 import Data.Aeson (FromJSON (parseJSON), Object, ToJSON (toJSON), Value (String), object, withObject, (.:), (.=))
-import Data.Aeson.Extras qualified as JSON
 import Data.Aeson.Types (Parser, parseFail)
 import Data.Bifunctor (first)
 import Data.Map (Map)
@@ -47,19 +46,22 @@ import Data.Typeable (Typeable)
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import Ledger qualified as Plutus
-import Ledger.Ada qualified as Ada
 import Ledger.Constraints (mustPayToPubKey)
 import Ledger.Constraints.OffChain (UnbalancedTx (UnbalancedTx, unBalancedTxRequiredSignatories, unBalancedTxTx, unBalancedTxUtxoIndex),
                                     adjustUnbalancedTx, mkTx)
 import Ledger.Constraints.OffChain qualified as U
+import Ledger.Scripts (datumHash)
 import Ledger.TimeSlot (SlotConfig, posixTimeRangeToContainedSlotRange)
 import Ledger.Tx (CardanoTx, TxOutRef, getCardanoTxInputs, txInRef)
+import Ledger.Value (adaSymbol, adaToken, singleton)
+import Legacy.Data.Aeson.Extras qualified as JSON
+import Legacy.Plutus.V2.Ledger.Tx qualified as Plutus
 import Plutus.Contract.CardanoAPI qualified as CardanoAPI
 import Plutus.Contract.Error (AsContractError (_ConstraintResolutionContractError, _OtherContractError))
 import Plutus.Contract.Request qualified as Contract
 import Plutus.Contract.Types (Contract)
 import Plutus.V1.Ledger.Scripts (MintingPolicyHash)
-import Plutus.V1.Ledger.TxId (TxId (TxId))
+import Plutus.V2.Ledger.Tx (TxId (TxId))
 import PlutusTx qualified
 import Wallet.API qualified as WAPI
 import Wallet.Effects (WalletEffect, balanceTx, yieldUnbalancedTx)
@@ -113,7 +115,7 @@ handleTx = balanceTx >=> either throwError WAPI.signTxAndSubmit
 getUnspentOutput :: AsContractError e => Contract w s e TxOutRef
 getUnspentOutput = do
     ownPkh <- Contract.ownPaymentPubKeyHash
-    let constraints = mustPayToPubKey ownPkh (Ada.lovelaceValueOf 1)
+    let constraints = mustPayToPubKey ownPkh (singleton adaSymbol adaToken 1)
     utx <- either (throwing _ConstraintResolutionContractError) pure (mkTx @Void mempty constraints)
     tx <- Contract.balanceTx (adjustUnbalancedTx utx)
     case Set.lookupMin (getCardanoTxInputs tx) of
@@ -268,15 +270,19 @@ mkInputs :: C.NetworkId -> Map Plutus.TxOutRef Plutus.TxOut -> Either CardanoAPI
 mkInputs networkId = traverse (uncurry (toExportTxInput networkId)) . Map.toList
 
 toExportTxInput :: C.NetworkId -> Plutus.TxOutRef -> Plutus.TxOut -> Either CardanoAPI.ToCardanoError ExportTxInput
-toExportTxInput networkId Plutus.TxOutRef{Plutus.txOutRefId, Plutus.txOutRefIdx} Plutus.TxOut{Plutus.txOutAddress, Plutus.txOutValue, Plutus.txOutDatumHash} = do
+toExportTxInput networkId Plutus.TxOutRef{Plutus.txOutRefId, Plutus.txOutRefIdx} Plutus.TxOut{Plutus.txOutAddress, Plutus.txOutValue, Plutus.txOutDatum} = do
     cardanoValue <- CardanoAPI.toCardanoValue txOutValue
     let otherQuantities = mapMaybe (\case { (C.AssetId policyId assetName, quantity) -> Just (policyId, assetName, quantity); _ -> Nothing }) $ C.valueToList cardanoValue
+        hash = case txOutDatum of
+            Plutus.OutputDatumHash h -> Just h
+            Plutus.OutputDatum datum -> Just (datumHash datum)
+            _                        -> Nothing
     ExportTxInput
         <$> CardanoAPI.toCardanoTxId txOutRefId
         <*> pure (C.TxIx $ fromInteger txOutRefIdx)
         <*> CardanoAPI.toCardanoAddress networkId txOutAddress
         <*> pure (C.selectLovelace cardanoValue)
-        <*> sequence (CardanoAPI.toCardanoScriptDataHash <$> txOutDatumHash)
+        <*> sequence (CardanoAPI.toCardanoScriptDataHash <$> hash)
         <*> pure otherQuantities
 
 mkRedeemers :: Plutus.Tx -> Either CardanoAPI.ToCardanoError [ExportTxRedeemer]
