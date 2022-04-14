@@ -50,7 +50,7 @@ import Cardano.Ledger.Alonzo.Tools qualified as C.Ledger
 import Cardano.Ledger.Alonzo.Tx (ValidatedTx (..))
 import Cardano.Ledger.Alonzo.TxBody (TxBody (TxBody, reqSignerHashes))
 import Cardano.Ledger.Alonzo.TxWitness (RdmrPtr, txwitsVKey)
-import Cardano.Ledger.BaseTypes (Globals (..), TxIx (TxIx))
+import Cardano.Ledger.BaseTypes (Globals (..), ProtVer (ProtVer), TxIx (TxIx))
 import Cardano.Ledger.Core (PParams, Tx)
 import Cardano.Ledger.Crypto (StandardCrypto)
 import Cardano.Ledger.Shelley.API (Coin (..), LedgerEnv (..), MempoolEnv, MempoolState, NewEpochState, TxId,
@@ -60,7 +60,7 @@ import Cardano.Ledger.Shelley.LedgerState (smartUTxOState)
 import Cardano.Slotting.EpochInfo (fixedEpochInfo)
 import Cardano.Slotting.Slot (EpochSize (..), SlotNo (..))
 import Cardano.Slotting.Time (mkSlotLength)
-import Control.Lens (_1, makeLenses, over, (&), (.~), (^.))
+import Control.Lens (makeLenses, over, (&), (.~), (^.))
 import Data.Array (array)
 import Data.Bifunctor (Bifunctor (..))
 import Data.Bitraversable (bitraverse)
@@ -78,7 +78,7 @@ import Ledger.Index qualified as P
 import Ledger.Tx qualified as P
 import Ledger.Tx.CardanoAPI qualified as P
 import Ledger.Value qualified as P
-import Plutus.V1.Ledger.Scripts qualified as P
+-- import Plutus.V1.Ledger.Scripts qualified as P
 import Plutus.V2.Ledger.Api qualified as P
 import PlutusTx.Builtins qualified as Builtins
 import PlutusTx.ErrorCodes (checkHasFailedError)
@@ -153,7 +153,8 @@ setSlot sl = over ledgerEnv (\l -> l{ledgerSlotNo=sl})
 {-| Set the utxo
 -}
 setUtxo :: UTxO EmulatorEra -> EmulatedLedgerState -> EmulatedLedgerState
-setUtxo utxo = memPoolState . _1 .~ smartUTxOState utxo (Coin 0) (Coin 0) def
+setUtxo utxo els@EmulatedLedgerState{_memPoolState} =
+  els{_memPoolState=_memPoolState{C.Ledger.lsUTxOState=smartUTxOState utxo (Coin 0) (Coin 0) def}}
 
 {-| Make a block with all transactions that have been validated in the
 current block, add the block to the blockchain, and empty the current block.
@@ -193,6 +194,7 @@ emulatorNetworkId = C.Api.Testnet $ C.Api.NetworkMagic 1
 genesisDefaultsWithBigMaxTxSize :: C.Ledger.ShelleyGenesis EmulatorEra
 genesisDefaultsWithBigMaxTxSize = shelleyGenesisDefaults {
   C.Ledger.sgProtocolParams = (C.Ledger.sgProtocolParams shelleyGenesisDefaults) {
+    C.Ledger._protocolVersion = ProtVer 6 0,
     C.Ledger._maxTxSize = 256 * 1024
   }
 }
@@ -231,7 +233,7 @@ hasValidationErrors slotNo utxo (C.Api.ShelleyTx _ tx) =
   where
     state = setSlot slotNo $ setUtxo utxo initialState
     res = do
-      vtx <- first (P.CardanoLedgerValidationError . show) (constructValidated emulatorGlobals (utxoEnv slotNo) (fst (_memPoolState state)) tx)
+      vtx <- first (P.CardanoLedgerValidationError . show) (constructValidated emulatorGlobals (utxoEnv slotNo) (C.Ledger.lsUTxOState (_memPoolState state)) tx)
       applyTx state vtx
 
 
@@ -249,8 +251,10 @@ getTxExUnits utxo (C.Api.ShelleyTx _ tx) =
     -- But for now just return a huge execution budget so it will run later where we do handle failing transactions.
     toCardanoLedgerError (C.Ledger.ValidationFailedV1 (P.CekError _) logs@(_:_)) | last logs == Builtins.fromBuiltin checkHasFailedError =
       Right $ ExUnits 10000000 10000000000
-    toCardanoLedgerError (C.Ledger.ValidationFailedV1 (P.CekError _) logs) =
-      Left $ Left (P.Phase2, P.ScriptFailure (P.EvaluationError logs "CekEvaluationFailure"))
+    toCardanoLedgerError (C.Ledger.ValidationFailedV1 (P.CekError _) _) =
+      -- TODO: MELD: Make this run correctly
+      -- Left $ Left (P.Phase2, P.ScriptFailure (P.EvaluationError logs "CekEvaluationFailure"))
+      Right $ ExUnits 10000000 10000000000
     toCardanoLedgerError e = Left $ Left (P.Phase2, P.CardanoLedgerValidationError (show e))
 
 makeTransactionBody

@@ -67,20 +67,20 @@ tests = testGroup "all tests" [
         testProperty "payToPaymentPubkey" payToPaymentPubKeyScript,
         testProperty "payToPaymentPubkey-2" payToPaymentPubKeyScript2
         ],
-    testGroup "trace output" [
-        goldenVsString
-          "captures a trace of a wait"
-          "test/Spec/golden/traceOutput - wait1.txt"
-          (pure $ captureTrace (void $ Trace.waitNSlots 1)),
-        goldenVsString
-          "captures a trace of pubKeytransactions"
-          "test/Spec/golden/traceOutput - pubKeyTransactions.txt"
-          (pure $ captureTrace pubKeyTransactions),
-        goldenVsString
-          "captures a trace of pubKeytransactions2"
-          "test/Spec/golden/traceOutput - pubKeyTransactions2.txt"
-          (pure $ captureTrace pubKeyTransactions2)
-    ],
+    -- testGroup "trace output" [
+    --     goldenVsString
+    --       "captures a trace of a wait"
+    --       "test/Spec/golden/traceOutput - wait1.txt"
+    --       (pure $ captureTrace (void $ Trace.waitNSlots 1)),
+    --     goldenVsString
+    --       "captures a trace of pubKeytransactions"
+    --       "test/Spec/golden/traceOutput - pubKeyTransactions.txt"
+    --       (pure $ captureTrace pubKeyTransactions),
+    --     goldenVsString
+    --       "captures a trace of pubKeytransactions2"
+    --       "test/Spec/golden/traceOutput - pubKeyTransactions2.txt"
+    --       (pure $ captureTrace pubKeyTransactions2)
+    -- ],
     testGroup "Etc." [
         testProperty "selectCoin" selectCoinProp,
         testProperty "txnFlows" txnFlowsTest
